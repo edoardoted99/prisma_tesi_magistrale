@@ -1,0 +1,297 @@
+
+
+\subsection{Capacità del modello e soluzioni banali}
+
+Un rischio fondamentale nell'addestramento degli autoencoder è che il modello impari semplicemente a copiare l'input nell'output senza estrarre alcuna informazione utile. Se l'architettura della rete ha una capacità eccessiva — ad esempio, se il numero di neuroni nello spazio latente è uguale o superiore alla dimensione dell'input ($q \geq n$) — il modello può facilmente apprendere la \textbf{funzione identità}.
+
+In questo scenario, l'errore di ricostruzione sarà nullo, ma il modello fallirà nel suo scopo primario: l'apprendimento di una rappresentazione "informativa" o compressa dei dati. Una soluzione identitaria è considerata una \textbf{soluzione banale} poiché non richiede che la rete scopra strutture latenti o correlazioni tra le caratteristiche di input; essa si limita a memorizzare e riprodurre i valori originali, rendendo l'autoencoder del tutto inutile per compiti di analisi o estrazione di feature.
+
+\subsection{Rappresentazioni utili vs ricostruzione perfetta}
+
+Per rendere un autoencoder efficace, è necessario trovare un equilibrio tra la fedeltà della ricostruzione e l'utilità della rappresentazione latente. L'obiettivo non è necessariamente ottenere una ricostruzione perfetta, ma forzare il modello a estrarre le \textbf{caratteristiche essenziali} del dataset.
+
+Prendendo come esempio il dataset MNIST, una rappresentazione utile non consiste nell'imparare i singoli valori di grigio di ogni pixel, ma nel catturare concetti astratti come il numero di linee richieste, l'angolo delle stesse e il modo in cui esse si connettono per formare una cifra. L'estrazione di queste "informazioni essenziali" permette di comprendere le caratteristiche fondamentali di un dataset e può essere utilizzata per compiti successivi come la classificazione o il clustering.
+
+Per prevenire l'apprendimento della funzione identità e promuovere queste rappresentazioni significative, si utilizzano principalmente due strategie:
+\begin{itemize}
+    \item \textbf{Creazione di un bottleneck}: si impone una dimensione dello spazio latente (l'output dell'encoder) molto inferiore a quella dell'input ($q < n$), costringendo la rete a una riduzione della dimensionalità.
+    \item \textbf{Regolarizzazione}: si aggiungono vincoli alla funzione di perdita (come la regolarizzazione $l_1$ o $l_2$) per indurre proprietà specifiche nelle attivazioni o nei parametri, favorendo ad esempio la \textbf{sparsità} della rappresentazione latente.
+\end{itemize}
+
+
+\section{Bottleneck e riduzione della dimensionalità}
+
+Una delle strategie più diffuse per prevenire l’apprendimento della funzione
+identità negli autoencoders consiste nell’imporre una \textit{strozzatura
+dimensionale} (\textit{bottleneck}) nello spazio latente. Questo approccio
+forza il modello a comprimere l’informazione contenuta nei dati di input,
+favorendo l’apprendimento di rappresentazioni compatte e informative.
+
+\subsection{Architetture con strozzatura}
+
+Un’architettura con bottleneck è caratterizzata da uno spazio latente di
+dimensione $q$ strettamente inferiore alla dimensione dell’input $n$
+($q < n$). In tali condizioni, l’encoder realizza una mappatura che riduce la
+dimensionalità dei dati:
+\begin{equation}
+    g : \mathbb{R}^n \rightarrow \mathbb{R}^q, \quad q < n,
+\end{equation}
+costringendo il modello a selezionare e preservare soltanto le informazioni
+necessarie alla ricostruzione dell’input.
+
+Dal punto di vista architetturale, questa strategia è comunemente
+implementata tramite reti neurali feed-forward simmetriche, in cui il numero
+di neuroni decresce progressivamente fino a raggiungere un minimo nello
+strato centrale, per poi aumentare nuovamente nella fase di decoding. Lo
+strato centrale rappresenta lo spazio latente e costituisce il collo di
+bottiglia dell’autoencoder. Come osservato in
+\parencite{michelucci2022introductionautoencoders}, la presenza del bottleneck
+impedisce al modello di apprendere una mappatura identitaria, poiché la
+ricostruzione deve avvenire a partire da una rappresentazione compressa.
+
+Se l’addestramento ha successo, il decoder è in grado di ricostruire
+l’input utilizzando un numero di feature latenti significativamente inferiore
+a quello delle variabili originali, dimostrando che l’informazione rilevante
+è contenuta in una sottostruttura a bassa dimensionalità.
+
+\subsection{Relazione con la PCA}
+
+L’uso di autoencoders con bottleneck è strettamente legato al problema della
+riduzione della dimensionalità. In particolare, esiste una relazione formale
+tra autoencoders e \textit{Principal Component Analysis} (PCA), uno dei metodi
+classici per la compressione lineare dei dati.
+
+Come discusso in \parencite{michelucci2022introductionautoencoders}, un
+autoencoder lineare — ovvero caratterizzato da funzioni di encoder e decoder
+lineari e addestrato minimizzando l’errore quadratico medio — è equivalente a
+una PCA, a condizione che:
+\begin{itemize}
+    \item l’encoder e il decoder siano trasformazioni lineari;
+    \item la funzione di perdita sia la Mean Squared Error;
+    \item i dati di input siano opportunamente normalizzati.
+\end{itemize}
+
+In questo caso, lo spazio latente appreso dall’autoencoder coincide con lo
+spazio generato dalle prime $q$ componenti principali del dataset, e la
+ricostruzione dell’input corrisponde alla sua proiezione sul sottospazio
+principale. Gli autoencoders possono quindi essere interpretati come una
+generalizzazione non lineare della PCA, in grado di apprendere trasformazioni
+più flessibili e adattive quando vengono utilizzate funzioni di attivazione
+non lineari.
+
+
+\subsubsection*{Formulazione matematica e dimostrazione}
+
+Si consideri un autoencoder lineare, in cui encoder e decoder sono definiti
+come trasformazioni lineari:
+\begin{equation}
+    \mathbf{h}_i = \mathbf{W}_e \mathbf{x}_i, \qquad
+    \hat{\mathbf{x}}_i = \mathbf{W}_d \mathbf{h}_i = \mathbf{W}_d \mathbf{W}_e \mathbf{x}_i,
+\end{equation}
+dove $\mathbf{W}_e \in \mathbb{R}^{q \times n}$ e $\mathbf{W}_d \in \mathbb{R}^{n \times q}$,
+con $q < n$. L’autoencoder è addestrato minimizzando l’errore quadratico medio:
+\begin{equation}
+    \mathcal{L} = \frac{1}{M} \sum_{i=1}^{M}
+    \left\| \mathbf{x}_i - \mathbf{W}_d \mathbf{W}_e \mathbf{x}_i \right\|^2.
+\end{equation}
+
+Assumendo che i dati siano centrati e normalizzati, il problema di
+ottimizzazione equivale alla ricerca della migliore approssimazione di rango
+$q$ della matrice dei dati. È noto che la soluzione ottimale di tale problema,
+nel senso dei minimi quadrati, è ottenuta proiettando i dati sul sottospazio
+generato dagli autovettori associati ai primi $q$ autovalori della matrice di
+covarianza, ovvero sulle prime $q$ componenti principali.
+
+In questo contesto, le righe della matrice $\mathbf{W}_e$ coincidono con le
+direzioni principali individuate dalla PCA, mentre l’operazione di decoding
+realizza la proiezione inversa nello spazio originale. Di conseguenza, lo
+spazio latente appreso dall’autoencoder lineare coincide con il sottospazio
+principale dei dati, e la ricostruzione dell’input corrisponde alla sua
+proiezione ortogonale su tale sottospazio
+\parencite{michelucci2022introductionautoencoders}.
+
+Questa equivalenza mostra come la PCA possa essere interpretata come un caso
+particolare di autoencoder privo di non linearità. L’introduzione di funzioni
+di attivazione non lineari consente agli autoencoders di superare i limiti
+della PCA, permettendo l’apprendimento di rappresentazioni latenti non
+lineari che catturano strutture più complesse nei dati. Tuttavia, come verrà
+discusso nelle sezioni successive, tale flessibilità non garantisce di per sé
+l’interpretabilità delle variabili latenti.
+
+
+\subsection{Limiti del bottleneck}
+
+Nonostante la sua efficacia, l’approccio basato esclusivamente sul bottleneck
+presenta alcune limitazioni. In primo luogo, una strozzatura eccessiva può
+portare a una perdita significativa di informazione, compromettendo la
+qualità della ricostruzione. Esiste quindi un compromesso critico tra grado
+di compressione e fedeltà dell’output, che dipende fortemente dalla scelta
+della dimensione $q$.
+
+Inoltre, il bottleneck non garantisce che le variabili latenti apprese siano
+interpretabili o semanticamente disentangled. Anche in presenza di una
+riduzione dimensionale efficace, le feature latenti possono risultare dense e
+fortemente entangled, rendendo difficile attribuire un significato chiaro a
+ciascuna componente dello spazio latente.
+
+Questi limiti motivano l’introduzione di ulteriori vincoli, come la
+regolarizzazione delle attivazioni o l’imposizione di sparsità nello spazio
+latente, che verranno discussi nelle sezioni successive come strumenti per
+migliorare l’interpretabilità delle rappresentazioni apprese.
+
+\section{Limiti degli autoencoders classici}
+\subsection{Rappresentazioni dense ed entangled}
+\subsection{Assenza di interpretabilità delle variabili latenti}
+
+\section{Sparsità nelle rappresentazioni latenti}
+\subsection{Sparsità come principio induttivo}
+\subsection{Sparse coding e rappresentazioni sovracomplete}
+
+\section{Sparse Autoencoders}
+\subsection{Definizione e caratteristiche principali}
+\subsection{Funzione obiettivo di un Sparse Autoencoder}
+\subsection{Metodi per imporre la sparsità}
+\subsection{Spazi latenti sovracompleti}
+
+\section{Sparse Autoencoders e interpretabilità}
+\subsection{Disentanglement delle feature}
+\subsection{Rappresentazioni monosemantiche}
+
+
+
+
+1) Contextual Embeddings: definizione e motivazione
+
+📍 Capitolo 11 – Masked Language Models
+
+Sezione 11.3 – Contextual Embeddings
+Qui trovi:
+
+definizione formale di contextual embeddings
+
+distinzione word types vs word instances
+
+relazione con polisemia e disambiguazione del senso
+
+esempi geometrici (cluster per senso)
+
+
+nlp_stanford
+
+👉 È il punto ideale per agganciarti direttamente alla frase finale del tuo capitolo.
+
+2) Language Models come sorgente degli embeddings contestuali
+
+📍 Capitolo 9 – The Transformer
+📍 Capitolo 10 – Large Language Models
+
+Cap. 9 (inizio): language modeling neurale e stati contestuali
+
+Cap. 10: paradigma pretrain → finetune e transfer learning
+
+
+nlp_stanford
+
+👉 Qui capisci perché gli embeddings contestuali non sono parametri, ma output di un LM.
+
+3) RNN / LSTM come primi embeddings contestuali
+
+📍 Capitolo 8 – Recurrent Neural Networks
+
+Hidden state come rappresentazione dipendente dal contesto
+
+Limiti strutturali (compressione, dipendenze lunghe)
+
+(Questa parte è implicitamente richiamata nel Cap. 11 come “pre-transformer”)
+
+👉 Serve come ponte concettuale, non come focus tecnico.
+
+4) Necessità del contesto bidirezionale
+
+📍 Capitolo 11 – Introduzione
+
+Motivazione della bidirezionalità
+
+Limiti dei causal language models per task interpretativi
+
+
+nlp_stanford
+
+👉 Qui il libro è molto chiaro: comprensione ≠ generazione.
+
+5) ELMo come modello di transizione
+
+📍 Capitolo 11 – esempi applicativi
+
+Uso di ELMo embeddings in WSD e analisi semantica
+
+Confronto implicito con BERT
+
+
+nlp_stanford
+
+👉 Studialo come tappa storica, non come architettura da dettagliare.
+
+6) Attention e Self-Attention
+
+📍 Capitolo 9 – The Transformer
+
+Sezione 9.1 – Attention
+
+dot-product attention
+
+query / key / value
+
+
+nlp_stanford
+
+👉 È il prerequisito matematico minimo per capire il Transformer.
+
+7) Transformer Encoder
+
+📍 Capitolo 9 – The Transformer
+
+Sezioni 9.1–9.2
+
+multi-head self-attention
+
+feed-forward per token
+
+residual + layer norm
+
+positional encoding
+
+
+nlp_stanford
+
+👉 Studia il blocco encoder: BERT è encoder-only.
+
+8) BERT e Masked Language Modeling (punto di arrivo)
+
+📍 Capitolo 11 – Masked Language Models
+
+Sezione 11.1 – Bidirectional Transformer Encoders
+
+differenza encoder-only vs decoder-only
+
+Training con Masked Language Modeling
+
+Next Sentence Prediction (storico)
+
+
+nlp_stanford
+
+👉 Questa è la reference centrale per BERT.
+
+9) Uso degli embeddings BERT
+
+📍 Capitolo 11 + Capitoli applicativi successivi
+
+Token embeddings per NER, POS, WSD
+
+[CLS] per classificazione
+
+
+nlp_stanford
+
+👉 Serve per chiudere il capitolo in modo applicativo.

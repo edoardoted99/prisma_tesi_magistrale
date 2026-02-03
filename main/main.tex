@@ -1,0 +1,131 @@
+\documentclass[a4paper,12pt]{article} % niente openright in article
+
+% -------------------------------------------------
+% PACCHETTI BASE
+% -------------------------------------------------
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[italian]{babel}
+\usepackage{enumitem}
+\usepackage{graphicx}
+\usepackage{tikz}
+\usepackage{longtable}
+\usepackage{siunitx}
+\usepackage{listings}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+\usepackage{bm}
+\usepackage{subcaption}
+\usepackage{algpseudocode}
+\usepackage{wrapfig}
+\usepackage{csquotes}
+\usepackage[
+  backend=biber,
+  style=authoryear,
+  sorting=nyt,
+  maxcitenames=1,   % "et al." già dal 2° autore nelle citazioni
+  maxbibnames=99    % in bibliografia mostra tanti autori (puoi ridurre se vuoi)
+]{biblatex}
+\addbibresource{references.bib}
+
+% Vuoi "(Autore et al. 2024)" senza virgola tra autore e anno:
+\DeclareDelimFormat{nameyeardelim}{\space}
+
+
+\DeclareFieldFormat{labelnumber}{(#1)}
+
+\addbibresource{references.bib}
+
+\usepackage[hidelinks]{hyperref}
+\usepackage{cleveref}
+\usepackage{booktabs}
+\usepackage{fancyvrb}
+\usepackage{xcolor}
+\usepackage{epigraph}
+\usepackage{subcaption}
+\usepackage{amsthm}
+
+\usepackage{forest}
+\usepackage{tcolorbox}
+\usetikzlibrary{shapes.geometric, arrows.meta, positioning, calc, shadows} % <--- Fondamentale per le ombre e i diagrammi
+\usetikzlibrary{decorations.pathreplacing}
+% Definisci un ambiente per le note
+\newtcolorbox{notebox}{
+    colback=gray!20,
+    colframe=gray!20,
+    boxrule=0pt,
+    arc=0mm,
+    left=10pt,
+    right=10pt,
+    top=10pt,
+    bottom=10pt
+}
+
+\newtheorem{definition}{Definition}
+
+% Colori opzionali per lo sfondo
+\definecolor{LightGray}{gray}{0.97}
+% Percorso immagini
+\graphicspath{{images/}}
+
+\lstset{
+    basicstyle=\ttfamily\small,
+    breaklines=true,
+    frame=single,
+    columns=fullflexible,
+    captionpos=b,
+    literate={à}{{\`a}}1 {è}{{\`e}}1 {é}{{\'e}}1 {ì}{{\`i}}1 {ò}{{\`o}}1 {ù}{{\`u}}1
+}
+
+\setlength{\parskip}{0.6em}
+\setlength{\parindent}{0pt}
+
+% -------------------------------------------------
+% INTESTAZIONE TESI
+% -------------------------------------------------
+\title{%
+Large Language Models \\
+\large Architettura, Addestramento e Impatti Applicativi
+}
+
+\author{[Il tuo nome]}
+\date{Anno Accademico 2024--2025}
+
+% -------------------------------------------------
+% DOCUMENTO
+% -------------------------------------------------
+\begin{document}
+
+% -------------------------------------------------
+% FRONT MATTER (numerazione romana)
+% -------------------------------------------------
+\pagenumbering{roman}
+
+%\maketitle
+\include{style/abstract}
+\tableofcontents
+
+% -------------------------------------------------
+% MAIN MATTER (numerazione araba)
+% -------------------------------------------------
+\clearpage
+\pagenumbering{arabic}
+
+\include{chapters/01_introduzione}
+\include{chapters/02_autoencoders}
+\include{chapters/03_embeddings}
+\include{chapters/04_disentangling_dense_embeddings_with_sparse_autoencoders}
+\include{chapters/05_prisma}
+\include{chapters/06_analisi_e_risultati}
+\include{chapters/07_conclusioni}
+\include{chapters/08_appendice}
+% \include{chapters/07_discussione}
+% \include{chapters/08_conclusioni}
+
+% -------------------------------------------------
+% BACK MATTER (appendici e bibliografia)
+% -------------------------------------------------
+\printbibliography
+
+\end{document}

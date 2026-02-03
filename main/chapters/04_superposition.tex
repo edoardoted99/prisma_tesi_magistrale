@@ -1,0 +1,35 @@
+\section{Il problema del disentanglement}
+
+\section{Introduzione}
+
+Nel capitolo precedente abbiamo esplorato come i modelli di \textit{embedding} siano in grado di mappare i significati latenti del linguaggio all'interno di spazi vettoriali ad alta dimensionalità. Un fenomeno empirico di particolare rilievo, nonché una proprietà estremamente desiderabile, è la tendenza di tali significati a organizzarsi secondo strutture lineari.
+È noto, come abbiamo visto, che le relazioni semantiche possano riflettersi in precise operazioni geometriche: il vettore che congiunge le rappresentazioni di \textit{re} e \textit{regina} approssima lo stesso spostamento semantico che intercorre tra \textit{uomo} e \textit{donna}. Questa regolarità suggerisce che la semantica possa essere descritta attraverso una rappresentazione strutturata, ordinata e, almeno in linea di principio, interpretabile.
+Con l'avvento dei grandi modelli di linguaggio (\textit{Large Language Models}), l'estrazione di una struttura leggibile dallo spazio rappresentazionale ha smesso di essere un mero interesse di ricerca teorica per diventare una necessità impellente. Dal momento in cui l'interazione tra esseri umani e modelli generativi è diventata centrale, la capacità di esercitare un controllo puntuale su tali strumenti è diventata prioritaria. Tale controllo presuppone il bisogno fondamentale di interpretare il loro funzionamento interno: il \textit{disentanglement} dei fattori di variazione diventa quindi la chiave per trasformare sistemi opachi in strumenti trasparenti e affidabili.
+Dal punto di vista della geometria dello spazio rappresentazionale, l'ideale teorico consisterebbe nell'associare ogni singola dimensione a un concetto semantico univoco. In un'ottica ingegneristica, ciò corrisponderebbe alla presenza di "neuroni" specializzati all'interno della rete neurale, la cui attivazione risulti proporzionale all'intensità del concetto espresso. Tuttavia, nella pratica, tale corrispondenza biunivoca è raramente riscontrabile: le rappresentazioni tendono a essere distribuite e i concetti risultano spesso intrecciati tra loro. La sfida di isolare queste componenti semantiche indipendenti costituisce il cuore del problema del \textit{disentanglement}.
+
+\section{Il fenomeno della Superposizione}
+
+Idealmente, in una rete neurale ``trasparente'', ogni neurone dovrebbe corrispondere a una singola \textit{feature} (caratteristica) dell'input chiaramente interpretabile. In un classificatore di immagini, ad esempio, ci aspetteremmo di trovare un neurone che si attivi esclusivamente per una specifica forma geometrica o un particolare colore; in un modello di linguaggio, per un preciso concetto sintattico o semantico. Questo fenomeno di corrispondenza biunivoca è definito \textbf{monosemanticità}. Tuttavia, l'evidenza empirica mostra che i neuroni sono spesso \textbf{polisemici}: un singolo neurone può attivarsi in risposta a una moltitudine di stimoli tra loro non correlati. Per indagare questo fenomeno, il lavoro di Anthropic, \textit{Toy Models of Superposition}, ha introdotto il concetto di \textbf{superposizione} attraverso l'analisi di modelli semplificati addestrati su dati sintetici.
+
+\subsection{Formalismo matematico}
+Il problema può essere formalizzato considerando un modello lineare che tenta di mappare un numero $m$ di \textit{features} di input in uno spazio latente di dimensione $d$, dove $d$ rappresenta il numero di neuroni fisici della rete, con $m > d$.
+Sia $x \in \mathbb{R}^m$ un vettore che rappresenta le \textit{features} in ingresso. Il modello comprime queste informazioni in un vettore di attivazioni neuronali $h \in \mathbb{R}^d$ tramite una matrice di pesi $W \in \mathbb{R}^{d \times m}$:
+\begin{equation}
+    h = Wx
+\end{equation}
+Per ricostruire le \textit{features} originali dalle attivazioni dei neuroni, il modello applica la matrice trasposta, seguita da una non-linearità (solitamente una funzione ReLU) necessaria per filtrare il rumore generato dalle interferenze:
+\begin{equation}
+    \hat{x} = \text{ReLU}(W^T h + b) = \text{ReLU}(W^T W x + b)
+\end{equation}
+In un regime di non-superposizione, la rete utilizzerebbe una base ortogonale per rappresentare le \textit{features}, limitandosi a codificarne al massimo $d$. Tuttavia, quando $m > d$, il modello è costretto a ``stipare'' più informazioni di quante siano le dimensioni fisiche disponibili.
+
+\subsection{Il ruolo della sparsità}
+La domanda fondamentale è perché il modello scelga di rappresentare più \textit{features} dei neuroni disponibili. La risposta risiede nella \textbf{sparsità} ($\mathcal{S}$) delle \textit{features}. Nei dati reali, la maggior parte dei concetti non è presente simultaneamente: le \textit{features} sono cioè raramente attive allo stesso tempo.
+
+Se le \textit{features} sono sparse, il modello può sfruttare una proprietà geometrica degli spazi ad alta dimensionalità: l'esistenza di un numero esponenziale di vettori \textbf{quasi-ortogonali} (vettori il cui prodotto scalare è prossimo a zero, $\epsilon$). Il modello accetta quindi un compromesso:
+\begin{itemize}
+    \item \textbf{Vantaggio:} Può rappresentare un numero di concetti $m \gg d$.
+    \item \textbf{Costo:} Introduce delle interferenze (rumore) tra le \textit{features} a causa della mancata ortogonalità perfetta.
+\end{itemize}
+
+Quando la sparsità è elevata, il rumore di interferenza diventa trascurabile rispetto al beneficio computazionale di poter codificare una vasta gamma di concetti. La superposizione emerge quindi come una strategia di compressione ottimale, permettendo alla rete di simulare un'architettura molto più grande utilizzando un numero limitato di neuroni fisici.

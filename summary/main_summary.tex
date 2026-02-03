@@ -1,0 +1,217 @@
+\documentclass[10pt, a4paper, twocolumn]{article}
+
+\usepackage{enumitem}   
+\usepackage[utf8]{inputenc}
+\usepackage[italian]{babel}
+\usepackage{amsmath, amssymb}
+\usepackage{graphicx}
+\usepackage[margin=1.5cm, columnsep=0.6cm]{geometry}
+\usepackage{hyperref}
+\usepackage{csquotes}
+\usepackage{tikz}
+\usepackage{eso-pic}
+\usepackage{graphicx}
+\usepackage{transparent}
+
+\usetikzlibrary{positioning, arrows.meta, calc, shapes.geometric}
+
+% Configurazione Bibliografia
+\usepackage[
+    backend=biber,
+    style=authoryear,
+    sorting=nyt
+]{biblatex}
+\addbibresource{references.bib}
+
+% Rimuove header/footer di default per risparmiare spazio
+\pagestyle{empty}
+
+\begin{document}
+
+
+%\AddToShipoutPictureBG*{%
+%  \AtPageUpperRight{%
+%    \raisebox{2.5cm}{%
+%      \hspace{-2cm}%
+%      \transparent{0.25}%
+%      \includegraphics[width=26cm]{prism.jpg}%
+%    }%
+%  }%
+%}
+% --- INTESTAZIONE COMPATTA ---
+\twocolumn[
+  \begin{@twocolumnfalse}
+    \vspace{-1.5cm}
+    \begin{center}
+      {\Large \textbf{PRISMA\footnotemark: Disentanglement e scomposizione in feature monosemantiche delle rappresentazioni latenti nei LLM tramite Sparse Autoencoders}} \\
+      \vspace{0.2cm}
+      {\large \textit{Edoardo Tedesco}}
+      \vspace{0.4cm}
+      \hrule
+      \vspace{0.4cm}
+    \end{center}
+  \end{@twocolumnfalse}
+]
+\footnotetext{Acronimo per \textit{\textbf{P}rojection of \textbf{R}epresentations for \textbf{I}nterpretability via \textbf{S}parse \textbf{M}onosemantic \textbf{A}utoencoders}.}
+
+
+\section{Introduzione e Problema}
+L'avvento dei Large Language Models (LLM) ha segnato un punto di svolta nell'elaborazione del linguaggio naturale \parencite{devlin2018bert}, consentendo alle macchine di apprendere complesse sfumature semantiche celate nei simboli testuali. Tuttavia, questa straordinaria capacità predittiva ha un costo significativo: la perdita di interpretabilità. I modelli operano proiettando le parole in spazi vettoriali ad altissima dimensionalità (embedding densi), i cui assi non possiedono un significato intrinseco umanamente comprensibile. In uno scenario ideale, per garantire trasparenza e sicurezza, sarebbe auspicabile che i singoli neuroni della rete corrispondessero a concetti isolati. Ad esempio, vorremmo poter identificare un singolo neurone che si attiva linearmente solo in presenza di concetti interpretabili come ``colore rosso" o ``muso di cane". In termini formali, l'obiettivo è ottenere una rappresentazione in cui il numero di dimensioni (neuroni) corrisponda esattamente ai \textbf{fattori di variazione} dei dati sottostanti \parencite{wang2024disentangledrepresentationlearning}. Empiricamente, tuttavia, si osserva raramente tale corrispondenza. 
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=\linewidth]{home.png}
+    \caption{Home page di PRISMA. Applicazione sviluppata in tesi con lo scopo di costruire rappresentaizioni latenti interpretabili per i large language models}
+    \label{fig:home_prisa}
+\end{figure}
+La discrepanza tra i concetti umani e le attivazioni neurali è alla base del \textbf{problema dell'allineamento} \parencite{elhage2022toy}: diventa arduo fidarsi di un sistema se non se ne comprendono i meccanismi decisionali interni. Una risposta teorica a questo fenomeno è fornita dalla \textbf{Superposition Hypothesis} \parencite{elhage2022toy}. Secondo questa ipotesi, le reti neurali sfruttano il fatto che vi sono concetti mutuamente esclusivi per rappresentare un numero di feature molto superiore al numero di neuroni fisici disponibili (e.g. il concetto di ``meccanica quantistica" raramente si attiva in presenza di ``torta al cioccolato"). I modelli simulano una rete molto più grande ``comprimendo" le informazioni tramite interferenza controllata. Sebbene efficiente, questo meccanismo genera \textit{polisemanticità}, rendendo la rete una ``black box". Il presente lavoro di tesi propone l'implementazione di un metodo per invertire questo processo attraverso il \textbf{disentanglement} delle rappresentazioni. L'obiettivo è proiettare gli embedding densi in nuovi spazi semantici sparsi, dotati di assi interpretabili \parencite{oneill2024disentangling}.
+A tale scopo è stata sviluppata \textbf{PRISMA} (Figura  \ref{fig:home_prisa}), un'applicazione che, analogamente a un prisma ottico che scompone la luce bianca nel suo spettro, isola i concetti atomici costitutivi del testo.
+
+\section{PRISMA}
+
+% --- SEZIONE 2 AGGIORNATA ---
+
+
+\subsection{Autoencoders Classici}
+Un Autoencoder (AE) è un'architettura di rete neurale non supervisionata addestrata per apprendere una funzione identità $h_{w,b}(x) \approx x$. Un AE è composto tipicamente da due moduli: un \textit{encoder} che comprime l'input in una rappresentazione latente $z$ di dimensione inferiore (\textit{bottleneck}), e un \textit{decoder} che ricostruisce l'input a partire da $z$. 
+
+\begin{figure}[h]
+    \centering
+    \begin{tikzpicture}[scale=0.6, transform shape, node distance=1cm]
+        % Nodes
+        \node[draw, rectangle, minimum height=3cm, minimum width=0.5cm, fill=gray!20] (input) at (0,0) {Input $x$};
+        \node[draw, trapezium, trapezium angle=70, shape border rotate=270, minimum height=1.5cm, fill=blue!10] (enc) at (2,0) {Encoder};
+        \node[draw, rectangle, minimum height=1cm, minimum width=0.5cm, fill=red!20] (latent) at (4,0) {$z \ll x$};
+        \node[draw, trapezium, trapezium angle=70, shape border rotate=90, minimum height=1.5cm, fill=blue!10] (dec) at (6,0) {Decoder};
+        \node[draw, rectangle, minimum height=3cm, minimum width=0.5cm, fill=gray!20] (output) at (8,0) {Out $\hat{x}$};
+
+        % Arrows
+        \draw[->, thick] (input) -- (enc);
+        \draw[->, thick] (enc) -- (latent);
+        \draw[->, thick] (latent) -- (dec);
+        \draw[->, thick] (dec) -- (output);
+    \end{tikzpicture}
+    \caption{Architettura di un Autoencoder classico: il bottleneck forza la compressione informativa.}
+\end{figure}
+Gli AE classici possono estrarre fattori principali, ma non garantiscono che le dimensioni latenti siano monosemantiche o regolarizzate. L'assenza di vincoli espliciti sulla struttura di $z$ crea uno spazio latente "discontinuo".
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=\linewidth]{ae_no_semantics.png}
+    \caption{Analisi della semantica nell'AE. A destra: lo spazio latente mostra cluster isolati (vincoli imposti dai dati). A sinistra: le generazioni mostrano che nelle zone vuote tra i cluster, dove mancano i vincoli, la semantica scompare lasciando spazio a ricostruzioni incoerenti.}
+    \label{fig:ae_no_semantics}
+\end{figure}
+Come mostrato in Figura~\ref{fig:ae_no_semantics}, la semantica emerge come sottomanifold indotto dai dati; al di fuori di questi vincoli, il modello non ha capacità generativa coerente.
+
+\subsection{Sparse Autoencoders (SAE)}
+Per ottenere \textit{disentanglement} e feature più interpretabili, Prisma utilizza uno \textbf{Sparse Autoencoder} \parencite{oneill2024disentangling}. A differenza degli AE classici, un SAE usa una rappresentazione latente \textit{overcomplete}: la dimensione latente $n$ è maggiore della dimensione dell'input $d$, definendo l'expansion factor $\rho = \frac{n}{d}$ con tipicamente $\rho \in [2,9]$ \parencite{oneill2024disentangling}. Contestualmente all'overcompletezza, si impone un forte vincolo di sparsità, costringendo solo un numero esiguo di neuroni ad attivarsi per ogni input.
+\begin{figure}[h!]
+    \centering
+    \begin{tikzpicture}[scale=0.6, transform shape, node distance=1cm]
+        % Nodes
+        \node[draw, rectangle, minimum height=2cm, minimum width=0.5cm, fill=gray!20] (input) at (0,0) {$x \in \mathbb{R}^{d}$};
+        
+        % Trapezium for Expansion
+        \node[draw, trapezium, trapezium angle=70, shape border rotate=90, minimum height=1.5cm, fill=green!10] (enc) at (3.0,0) {Encoder};
+        
+        % Sparse Latent
+        \node[draw, rectangle, minimum height=4cm, minimum width=0.5cm, fill=red!20, label=above: spazio latente $\mathbf{h}$] (latent) at (6,0) {$h \in \mathbb{R}^{n}$};
+        \node at (6, -2.5) {\footnotesize $n > d$};
+
+        % Trapezium for Compression
+        \node[draw, trapezium, trapezium angle=70, shape border rotate=270, minimum height=1.5cm, fill=green!10] (dec) at (9.0,0) {Decoder};
+        
+        \node[draw, rectangle, minimum height=2cm, minimum width=0.5cm, fill=gray!20] (output) at (11.5,0) {$\hat{x} \approx x$};
+
+        % Arrows
+        \draw[->, thick] (input) -- (enc);
+        \draw[->, thick] (enc) -- (latent);
+        \draw[->, thick] (latent) -- (dec);
+        \draw[->, thick] (dec) -- (output);
+    \end{tikzpicture}
+    \caption{Sparse Autoencoder: spazio latente overcomplete con attivazioni sparse.}
+\end{figure} L'intuizione è che l'overcompletezza fornisca molte ``direzioni'' potenzialmente disponibili, mentre la sparsità forza il modello a selezionarne poche per rappresentare un dato input, favorendo feature più stabili e interpretabili.
+\subsection{Architettura}
+Seguiamo il formalismo di \parencite{oneill2024disentangling}. Sia $x \in \mathbb{R}^d$ l'input (embedding) e $h \in \mathbb{R}^n$ la rappresentazione latente nascosta, con $n > d$. L'architettura è definita da due mappe parametrizzate:
+\[
+\theta = \{W_e, b_e\}, \qquad \phi = \{W_d, b_d\}.
+\]
+\begin{enumerate}[label=(\roman*)]
+    \item \textbf{Encoder:} mappa l'input nella rappresentazione nascosta.
+\begin{equation}
+    h = f_\theta(x) = \sigma(W_e x + b_e)
+\end{equation}
+dove $W_e \in \mathbb{R}^{n \times d}$, $b_e \in \mathbb{R}^{n}$ e $\sigma(\cdot)$ è una non-linearità (ReLU).
+\item \textbf{Decoder:} ricostruisce l'input dalla rappresentazione latente.
+\begin{equation}
+    \hat{x} = g_\phi(h) = W_d h + b_d
+\end{equation}
+dove $W_d \in \mathbb{R}^{d \times n}$ e $b_d \in \mathbb{R}^{d}$. Il decoder è \textbf{lineare}: di conseguenza la ricostruzione è una \emph{combinazione lineare} dei vettori-feature (le colonne di $W_d$) pesata dalle attivazioni in $h$, rendendo ciascuna feature interpretabile come una \emph{direzione} nello spazio degli embedding \parencite{oneill2024disentangling}. 
+\textit{Nota:} la linearità non implica che tali ``concetti” siano indipendenti o ortogonali; in uno spazio con più feature che dimensioni l’ortogonalità perfetta è impossibile, coerentemente con l’idea di \textbf{superposizione} discussa in introduzione \parencite{elhage2022toy}.
+\end{enumerate}
+
+
+\subsection{Training e Loss Function}
+L'obiettivo di addestramento combina: (i) una perdita di ricostruzione, (ii) un vincolo di sparsità, e (iii) una perdita ausiliaria per mitigare il problema dei \textit{dead latents} \parencite{oneill2024disentangling}. La funzione di costo complessiva è:
+
+\begin{equation}
+    \mathcal{L} = \underbrace{\frac{1}{d} \|x - \hat{x}\|_2^2}_{\text{Reconstruction}} \;+\; \lambda \mathcal{L}_{sparse}(h) \;+\; \alpha \mathcal{L}_{aux}(x, \hat{x})
+\end{equation}
+dove $\lambda > 0$ e $\alpha > 0$ controllano il trade-off tra fedeltà, sparsità e recupero delle feature inattive.
+
+\subsubsection{Vincolo di Sparsità (Top-K / k-sparse)}
+Il termine $\mathcal{L}_{sparse}(h)$ è implementato tramite un vincolo \textbf{Top-K}: durante il forward pass, vengono mantenute solo le $k$ attivazioni maggiori in $h$, mentre le restanti sono poste a zero \parencite{oneill2024disentangling}. Questo differisce dalla regolarizzazione $L_1$, che può introdurre \textit{shrinkage} sistematico delle attivazioni e quindi rappresentazioni meno fedeli.
+
+\subsubsection{Auxiliary Loss (AuxK, ispirata ai Ghost Grads)}
+Per mitigare il problema dei \textit{dead latents} (feature che restano inattive su scala di training, ad esempio non attivandosi per un intero epoch), si introduce una perdita ausiliaria ispirata alla tecnica dei \textit{ghost grads} \parencite{oneill2024disentangling}. Definito l'errore di ricostruzione $e = x - \hat{x}$, la perdita ausiliaria è:
+
+\begin{equation}
+    \mathcal{L}_{aux}(x, \hat{x}) = \|e - \hat{e}\|_2^2
+\end{equation}
+dove $\hat{e}$ è una ricostruzione dell'errore ottenuta usando un piccolo sottoinsieme di latenti selezionati (AuxK), tipicamente con $k_{aux} \approx 2k$ \parencite{oneill2024disentangling}. Questo termine forza il modello a sfruttare anche feature raramente attive per spiegare l'errore residuo, aumentando l'utilizzo effettivo della capacità latente.
+
+\subsection{Rappresentazione Latente}
+Applicando l'encoder a un batch di documenti si ottiene la matrice delle attivazioni sparse $H$. Le attivazioni risultano puntiformi e strutturate, coerentemente con l'obiettivo di ottenere feature (più) monosemantiche e interpretabili.
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=\linewidth]{latent_matrix.png}
+    \caption{Visualizzazione della matrice sparsa $H$ (primi 500 neuroni). Le attivazioni sono puntiformi e verticali.}
+    \label{fig:latent_h}
+\end{figure}
+
+\subsection{Interpretabilità degli assi}
+Una volta addestrato il SAE, ogni feature può essere interpretata associandole una descrizione testuale. Nel paper, questa fase avviene tramite un LLM \textit{Interpreter} che, osservando esempi che massimizzano l'attivazione di una feature e contro-esempi che non la attivano, produce un'etichetta semantica (topic/concetto) per quella direzione latente \parencite{oneill2024disentangling}. Nel contesto di Prisma viene implementata questa sola fase di labelling (senza il successivo step di \textit{Predictor}).
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=\linewidth]{architecture.png}
+    \caption{Processo di training e feature labelling del SAE: interpretazione delle feature tramite LLM \parencite{oneill2024disentangling}.}
+    \label{fig:architecture}
+\end{figure}
+
+\section{Analisi della Dimensionalità: Effective Rank}
+La matrice delle attivazioni sparse $H \in \mathbb{R}^{N \times n}$ (documenti $\times$ feature) non codifica feature perfettamente indipendenti: in domini reali esistono co-attivazioni sistematiche tra concetti (es.\ \textit{febbre} $\leftrightarrow$ \textit{polmonite}), che riducono i gradi di libertà effettivi del codice. Per quantificare questa \emph{dimensione effettiva} in modo continuo e robusto (a differenza del rango classico, instabile in presenza di rumore), adottiamo l'\textbf{Effective Rank} \parencite{roy2007effective}, definito tramite l'entropia dello spettro singolare normalizzato:
+\begin{equation}
+ER(H) \;=\; \exp\!\left(-\sum_i p_i \log p_i\right),
+\qquad
+p_i \;=\; \frac{\sigma_i}{\|\sigma\|_1},
+\end{equation}
+dove $\{\sigma_i\}$ sono i valori singolari di $H$. Intuitivamente, $ER(H)$ è alto se la varianza è distribuita su molte direzioni (codice più \emph{isotropo}), ed è basso se concentrata in poche direzioni (codice più \emph{compresso}). Stimiamo $ER(H)$ al variare dell'overcompletezza del SAE (expansion factor, quindi $n=d_{\text{latent}}$) e confrontiamo i dati reali con una \emph{ipotesi nulla} ottenuta addestrando lo stesso SAE su input casuali non strutturati. Per sintetizzare l'effetto introduciamo il \textbf{Semantic Compression Ratio} (SCR), che misura la compressione relativa rispetto al rumore:
+\begin{equation}
+SCR(\%) \;=\; 100 \cdot \frac{ER_{\text{null}} - ER_{\text{real}}}{ER_{\text{null}}}.
+\end{equation}
+Empiricamente osserviamo che, aumentando la capacità latente, $ER$ cresce in entrambi i casi, ma cresce \emph{sistematicamente meno} sui dati reali, indicando che la semantica impone vincoli globali di co-attivazione che riducono la dimensionalità effettiva del codice.
+
+\begin{figure}[h]
+    \centering
+    % Sostituisci il path con il tuo file (es. effective_rank/<BASE_NAME>_analysis.png)
+    \includegraphics[width=\linewidth]{erank_scr_twinaxis_scr_red.png}
+    \caption{Effective Rank vs expansion factor (real vs ipotesi nulla) e Semantic Compression Ratio (SCR\%).}
+    \label{fig:erank_scr}
+\end{figure}
+% --- SEZIONE 4 AGGIORNATA ---
+\section{Conclusioni}
+Il lavoro con Prisma dimostra che l'interpretabilità dei LLM può essere recuperata invertendo il processo di \textit{superposition}. Proiettando le attivazioni in uno spazio overcomplete e forzando la sparsità, i SAE isolano feature monosemantiche, interpretabili come concetti atomici. Il contributo centrale di questa tesi è l'osservazione che tali concetti non sono indipendenti tra loro. L'analisi dell'Effective Rank rivela che lo spazio latente del SAE ha una dimensionalità effettiva sistematicamente inferiore rispetto all'ipotesi nulla di dati non strutturati. Questa riduzione, quantificata dal Semantic Compression Ratio, non è un artefatto del metodo: riflette \textbf{vincoli semantici reali} che legano i concetti in pattern di co-attivazione (ad esempio, \textit{febbre} e \textit{polmonite} tendono ad attivarsi insieme). In altri termini,\textbf{la semantica si manifesta come una riduzione dei gradi di libertà} nello spazio dei concetti estratti. I SAE non eliminano questa struttura di dipendenza: la rendono osservabile e misurabile.
+\printbibliography
+
+\end{document}
