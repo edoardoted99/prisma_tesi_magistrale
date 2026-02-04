@@ -185,7 +185,7 @@ Ciascun abstract è stato trasformato in un vettore denso di dimensione $d = 384
 
 \subsubsection{Interpretazione automatica delle feature}
 \label{subsubsec:feature_interpretation}
-Lo Sparse Autoencoder addestrato sugli embedding del corpus arXiv ha prodotto uno spazio latente con migliaia di direzioni attive. Per rendere queste direzioni semanticamente leggibili, si è proceduto all'interpretazione automatica tramite un LLM locale, secondo la metodologia descritta nel Paragrafo~\ref{subsubsec:llm_interpreter}.
+Lo Sparse Autoencoder addestrato sugli embedding del corpus arXiv ha prodotto uno spazio latente con migliaia di direzioni attive. Per rendere queste direzioni semanticamente leggibili, si è proceduto all'interpretazione automatica tramite un LLM locale, secondo la metodologia descritta nel Paragrafo~\ref{subsubsec:interpreter}.
 
 Il modello utilizzato come interprete è \textbf{Gemma 3 27B}\footnote{\url{https://ollama.com/library/gemma3:27b}}, eseguito localmente tramite Ollama sulla macchina descritta nel Paragrafo~\ref{subsec:setup}. Per ciascuna feature, l'interprete ha ricevuto in input i testi con le attivazioni più alte (\textit{top activating contexts}) e i contro-esempi, producendo un'etichetta semantica in linguaggio naturale. Complessivamente, sono state interpretate con successo più di \textbf{4.000 feature}, ciascuna associata a una descrizione testuale del concetto che la direzione latente codifica.
 
@@ -193,7 +193,28 @@ Il processo di interpretazione su larga scala, vale a dire oltre 4.000 feature c
 
 \subsubsection{Esempio: Feature 5648 --- \textit{Time in physics}}
 \label{subsubsec:feature_example}
-Per illustrare concretamente il tipo di struttura estratta dal SAE, si esamini la \textbf{Feature 5648} del modello SAE \#10 (Figura~\ref{fig:feature_5648}). L'interprete Gemma 3 ha assegnato a questa feature la seguente etichetta semantica:
+Per illustrare concretamente il tipo di struttura estratta dal SAE, si esamini la \textbf{Feature 5648} del modello SAE \#10 (Figura~\ref{fig:feature_5648_label}). L'interprete Gemma 3 ha assegnato a questa feature la seguente etichetta semantica:
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\textwidth]{pictures/cap6/feature_5648_label.png}
+    \caption{Descrizione della feature 5648 generata dal LLM interprete}
+    \label{fig:feature_5648_label}
+\end{figure}
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\textwidth]{pictures/cap6/feature_5648_docs.png}
+    \caption{Documenti che hanno maggiormente attivato il neurone associato alla feature 5648}
+    \label{fig:feature_5648_docs}
+\end{figure}
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\textwidth]{pictures/cap6/feature_5648_2.png}
+    \caption{Posizionamento della feature 5648 nello scatter plot delle attivazioni su media e varianza delle intensità di attivazioni dei neuroni.}
+    \label{fig:feature_5648_scatter}
+\end{figure}
+
 
 \begin{quote}
 \textit{``The concept of time, time symmetry, or time-related phenomena in quantum or classical mechanics.''}
@@ -449,7 +470,7 @@ L'aumento monotono del Semantic Compression Ratio con l'expansion factor (Figura
 In altri termini: il feature splitting aumenta il numero di feature \textit{nominali} ($n$), ma non aumenta proporzionalmente la dimensionalità \textit{effettiva} (ER). Le nuove feature emergenti non sono indipendenti dalle precedenti, bensì loro specializzazioni. Questo spiega perché l'SCR \textit{aumenta} con l'expansion factor: più feature, ma meno indipendenza relativa.
 \begin{notebox}
 \textbf{Il paradosso della capacità, rivisitato}\\[0.5em]
-Nel Paragrafo~\ref{sec:04_disentangling_dense_embeddings_with_sparse_autoencoders} è stato introdotto il paradosso della capacità: come può un modello come BERT~\parencite{devlin2018bert} rappresentare decine di migliaia di concetti con soli 768 neuroni?
+Nel Paragrafo~\ref{sec:04_disentanglement} è stato introdotto il paradosso della capacità: come può un modello come BERT~\parencite{devlin2018bert} rappresentare decine di migliaia di concetti con soli 768 neuroni?
 L'analisi dell'Effective Rank suggerisce una risposta parziale: quei concetti non sono \textit{indipendenti}. La struttura semantica del linguaggio, vale a dire le relazioni tassonomiche, le co-occorrenze, le analogie, introduce correlazioni che permettono di comprimere molti concetti in poche dimensioni effettive.
 Lo Sparse Autoencoder non elimina queste correlazioni: le rende \textit{esplicite}, mappandole in famiglie e gerarchie interpretabili.
 \end{notebox}
@@ -472,7 +493,7 @@ Nel Mito della Caverna, Platone descrive prigionieri incatenati che osservano om
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=0.85\textwidth]{pictures/cap6/mito_caverna.jpeg}
-    \caption{Mito della Caverna di Platone. Un uomo proietta l'ombra di un uccello su una parete; il prigioniero incatenato osserva l'ombra e la scambia per la realtà. La proiezione è coerente, l'ombra ha la forma di un uccello, ma è una riduzione dell'oggetto originale. Nel contesto del presente lavoro, ogni rappresentazione del significato (densa, sparsa, umana) è un'ombra sulla parete: una proiezione strutturata ma parziale di una realtà semantica sottostante.}
+    \caption{Mito della Caverna di Platone. Un uomo proietta l'ombra di un uccello su una parete; il prigioniero incatenato osserva l'ombra e la scambia per la realtà. La proiezione è coerente, l'ombra ha la forma di un uccello, ma è una riduzione dell'oggetto originale. Nel contesto del presente lavoro, ogni rappresentazione del significato (densa, sparsa, umana) è un'ombra sulla parete: una proiezione strutturata ma parziale di una realtà semantica sottostante. Fonte: \cite{fantaguzzi2024mito}.}
     \label{fig:caverna_platone}
 \end{figure}
 
@@ -495,7 +516,7 @@ La fisica ha affrontato una domanda strutturalmente identica a quella posta alla
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=0.6\textwidth]{pictures/cap6/Michelson_Interferometer_Red_Laser_Interference.jpg}
-    \caption{Interferenza prodotta da un raggio luminoso rosso con l'esperimento di Michelson-Morley. L'esperimento dimostrò l'indipendenza della velocità della luce rispetto all'ipotetico vento d'etere e costituì la prima forte prova contro la teoria dell'etere luminifero. Eseguito nel 1887 nell'attuale Case Western Reserve University, è considerato uno dei più famosi e importanti esperimenti della storia della fisica.}
+    \caption{Interferenza prodotta da un raggio luminoso rosso con l'esperimento di Michelson-Morley. L'esperimento dimostrò l'indipendenza della velocità della luce rispetto all'ipotetico vento d'etere e costituì la prima forte prova contro la teoria dell'etere luminifero. Eseguito nel 1887 nell'attuale Case Western Reserve University, è considerato uno dei più famosi e importanti esperimenti della storia della fisica. Fonte: \cite{wikipedia2024michelson}.}
     \label{fig:mm_experiment}
 \end{figure}
 Per gran parte dell'Ottocento, i fisici cercavano l'\textit{etere luminifero}: un mezzo materiale che pervadeva tutto lo spazio e attraverso il quale si propagavano le onde elettromagnetiche. L'etere non era solo un'ipotesi sulla natura della luce: era, implicitamente, un \textbf{sistema di riferimento assoluto}, vale a dire il sistema ``a riposo'' rispetto al quale misurare il moto ``vero'' di tutti gli altri corpi.
@@ -507,7 +528,7 @@ Einstein non risolse il problema dell'etere: lo dissolse. Anziché cercare il ri
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=0.6\textwidth]{pictures/cap6/einstein.jpeg}
-    \caption{Albert Einstein (1879--1955). Con la Relatività Ristretta (1905), Einstein capovolse la domanda sul moto assoluto: anziché cercare un sistema di riferimento privilegiato, mostrò che le leggi della fisica sono le stesse in tutti i sistemi inerziali. La realtà fisica non risiede in un riferimento particolare, ma negli \textbf{invarianti}, vale a dire le quantità che si preservano passando da un riferimento all'altro.}
+    \caption{Albert Einstein (1879--1955). Con la Relatività Ristretta (1905), Einstein capovolse la domanda sul moto assoluto: anziché cercare un sistema di riferimento privilegiato, mostrò che le leggi della fisica sono le stesse in tutti i sistemi inerziali. La realtà fisica non risiede in un riferimento particolare, ma negli \textbf{invarianti}, vale a dire le quantità che si preservano passando da un riferimento all'altro. Fonte: \cite{wikipedia2024einstein}.}
     \label{fig:einstein}
 \end{figure}
 Ma se nessun sistema di riferimento è speciale, cosa è ``reale''? La risposta di Einstein fu precisa: sono reali gli \textbf{invarianti}, le quantità che restano identiche indipendentemente dal sistema di riferimento scelto. L'intervallo spaziotemporale $ds^2 = c^2\, dt^2 - dx^2 - dy^2 - dz^2$ cambia nelle sue componenti ($dt$, $dx$, $dy$, $dz$) quando si passa da un osservatore all'altro, ma la combinazione $ds^2$ resta la stessa. Lo spazio e il tempo, presi separatamente, sono relativi all'osservatore, come ombre sulla parete. L'intervallo $ds^2$, che li lega insieme, è l'oggetto fuori dalla caverna.

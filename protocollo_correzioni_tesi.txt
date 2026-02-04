@@ -1,5 +1,7 @@
 # Protocollo Convenzioni Tesi
 
+
+
 ## Stile e voce narrante
 - Utilizzare sempre la **forma impersonale** (es. "saranno discussi", "saranno introdotti", "come sarà possibile osservare", "è stato osservato che", "si consideri", "si supponga", "è possibile costruire", "è noto che")
 - Mai il "noi" maiestatis (no "discuteremo", no "introdurremo", no "come vedremo", no "abbiamo stabilito", no "seguiremo", no "possiamo costruire", no "vogliamo produrre", no "sappiamo che")
@@ -63,3 +65,12 @@
   - "conseguenze pratiche immediate" → "conseguenze immediate"
   - "In termini pratici, un autoencoder" → "Un autoencoder"
 - Ripetere il soggetto quando la frase rischia di essere ambigua (es. "il modello è costretto" dopo una subordinata)
+
+
+
+#- , e (non mettere e dopo la virgola attieniniti al'uso italiano)
+#- piuttosto che ()
+#- ovvero (ovvero in itlaiano singifica oppure)
+#- Poichè, perchè, ... (accenti sbagliati),
+#- sezione/i (non si dice sezione ma paragrafo)
+

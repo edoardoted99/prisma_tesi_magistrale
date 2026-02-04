@@ -145,7 +145,7 @@ La Figura~\ref{fig:sae_architecture} illustra il flusso dei dati attraverso l'ar
     \caption{Architettura dello Sparse Autoencoder. L'encoder $f_\theta$ (non lineare) mappa l'input $\mathbf{x}$ in uno spazio latente \textit{overcomplete} di dimensione $n \gg d$. La sparsità forza solo poche componenti di $\mathbf{h}$ (cerchi verdi) ad essere attive, mentre le altre (cerchi grigi) restano nulle. Il decoder $g_\phi$ (lineare) ricostruisce l'input come combinazione delle sole direzioni attive.}
     \label{fig:sae_architecture}
 \end{figure}
-Un'asimmetria meno evidente, ma altrettanto importante, riguarda la natura delle due trasformazioni: l'encoder è non lineare (come in Eq.~\ref{eq:sae_encoder}), mentre il decoder è lineare (come in Eq.~\ref{eq:sae_decoder}). Questa scelta non è arbitraria: come sarà illustrato nei prossimi paragrafi, è precisamente la linearità del decoder a garantire che le feature estratte siano interpretabili come direzioni nello spazio degli embedding, la condizione necessaria per ottenere il disentanglement discusso nel Capitolo~\ref{sec:04_disentangling_dense_embeddings_with_sparse_autoencoders}.
+Un'asimmetria meno evidente, ma altrettanto importante, riguarda la natura delle due trasformazioni: l'encoder è non lineare (come in Eq.~\ref{eq:sae_encoder}), mentre il decoder è lineare (come in Eq.~\ref{eq:sae_decoder}). Questa scelta non è arbitraria: come sarà illustrato nei prossimi paragrafi, è precisamente la linearità del decoder a garantire che le feature estratte siano interpretabili come direzioni nello spazio degli embedding, la condizione necessaria per ottenere il disentanglement discusso nel Capitolo~\ref{sec:04_disentanglement}.
 \subsubsection{L'encoder: una proiezione non lineare}
 \label{subsubsec:sae_encoder}
 
@@ -197,13 +197,13 @@ La scelta della ReLU serve a due scopi. Il primo è garantire attivazioni non ne
     \label{fig:encoder_detection}
 \end{figure}
 
-È importante chiarire il ruolo di questi vettori $\mathbf{e}_i$. Essi non coincidono con le direzioni $\mathbf{w}_i$ introdotte nel Capitolo~\ref{sec:04_disentangling_dense_embeddings_with_sparse_autoencoders}: le $\mathbf{w}_i$ sono le direzioni lungo cui le feature sono \textit{codificate} nello spazio degli embedding, e corrispondono, come sarà illustrato, alle colonne della matrice del decoder $W_d$. Le $\mathbf{e}_i$, invece, sono direzioni ausiliarie che l'encoder utilizza per \textit{rilevare} le feature nell'input. In uno scenario ideale con feature perfettamente ortogonali, le due coinciderebbero: per rilevare una feature basterebbe proiettare lungo la sua stessa direzione. Ma nella superposition le $\mathbf{w}_i$ non sono ortogonali, e proiettare direttamente lungo di esse causerebbe l'interferenza descritta nel capitolo precedente. L'encoder impara quindi direzioni $\mathbf{e}_i \neq \mathbf{w}_i$ che compensano questa sovrapposizione.
+È importante chiarire il ruolo di questi vettori $\mathbf{e}_i$. Essi non coincidono con le direzioni $\mathbf{w}_i$ introdotte nel Capitolo~\ref{sec:04_disentanglement}: le $\mathbf{w}_i$ sono le direzioni lungo cui le feature sono \textit{codificate} nello spazio degli embedding, e corrispondono, come sarà illustrato, alle colonne della matrice del decoder $W_d$. Le $\mathbf{e}_i$, invece, sono direzioni ausiliarie che l'encoder utilizza per \textit{rilevare} le feature nell'input. In uno scenario ideale con feature perfettamente ortogonali, le due coinciderebbero: per rilevare una feature basterebbe proiettare lungo la sua stessa direzione. Ma nella superposition le $\mathbf{w}_i$ non sono ortogonali, e proiettare direttamente lungo di esse causerebbe l'interferenza descritta nel capitolo precedente. L'encoder impara quindi direzioni $\mathbf{e}_i \neq \mathbf{w}_i$ che compensano questa sovrapposizione.
 Dal punto di vista dell'interpretabilità, le $\mathbf{e}_i$ non hanno un significato semantico diretto: sono un meccanismo interno che serve all'encoder per svolgere il suo compito. Ciò che costituisce il vero output interpretabile del SAE sono le attivazioni $h_i$ e le direzioni $\mathbf{w}_i$ del decoder. La corrispondenza è uno-a-uno: per ogni $i \in \{1, \dots, n\}$, il vettore $\mathbf{e}_i$ rileva la feature $i$ producendo l'attivazione $h_i$, che a sua volta pesa la direzione $\mathbf{w}_i$ nella ricostruzione. Ma mentre $\mathbf{e}_i$ è un dettaglio implementativo, $\mathbf{w}_i$ rappresenta la feature stessa nello spazio semantico.
 La non linearità dell'encoder è dunque essenziale: permette di implementare una logica di rilevamento sofisticata in presenza di sovrapposizione. Il decoder, come sarà illustrato di seguito, ha un compito diverso, vale a dire ricostruire l'input come combinazione di feature, e per quel compito la linearità non è solo possibile, ma necessaria.
 
 \subsubsection{Lo spazio latente overcomplete}
 \label{subsubsec:sae_overcomplete}
-Nel Capitolo~\ref{sec:04_disentangling_dense_embeddings_with_sparse_autoencoders} è stato identificato il paradosso della capacità: un modello come BERT~\parencite{devlin2018bert} rappresenta decine di migliaia di concetti con soli 768 neuroni. La superposition risolve questo problema comprimendo le feature come direzioni oblique, ma al costo dell'opacità e dell'interferenza. Se si intende invertire questo processo, vale a dire ottenere una rappresentazione in cui ogni feature abbia un asse dedicato, servono più dimensioni di quelle originarie.
+Nel Capitolo~\ref{sec:04_disentanglement} è stato identificato il paradosso della capacità: un modello come BERT~\parencite{devlin2018bert} rappresenta decine di migliaia di concetti con soli 768 neuroni. La superposition risolve questo problema comprimendo le feature come direzioni oblique, ma al costo dell'opacità e dell'interferenza. Se si intende invertire questo processo, vale a dire ottenere una rappresentazione in cui ogni feature abbia un asse dedicato, servono più dimensioni di quelle originarie.
 Questa è l'intuizione alla base dello spazio latente \textit{overcomplete}. A differenza degli autoencoder classici, che comprimono l'input in un bottleneck di dimensionalità inferiore ($n < d$), lo Sparse Autoencoder espande la rappresentazione in uno spazio più grande:
 \begin{equation}
     n > d
@@ -261,7 +261,7 @@ e assume tipicamente valori compresi tra 2 e 9~\parencite{oneill2024disentanglin
     \label{fig:sae_overcomplete}
 \end{figure}
 La scelta di $\rho$ riflette un compromesso. Valori troppo bassi potrebbero non fornire abbastanza dimensioni per rappresentare tutte le feature del modello originario: se BERT codifica 50.000 concetti in 768 dimensioni, un expansion factor $\rho = 2$ fornirebbe solo 1.536 assi, ancora insufficienti per il disentanglement completo. Valori troppo alti, d'altra parte, aumentano il costo computazionale e il rischio di overfitting: con troppe dimensioni disponibili, il modello potrebbe apprendere feature spurie o ridondanti.
-Nella pratica, la scelta dell'expansion factor dipende dal dominio e dalla granularità desiderata. In~\parencite{oneill2024disentangling} si osserva che, per embedding di articoli scientifici, valori di $\rho$ tra 2 e 6 producono feature interpretabili con un buon compromesso tra capacità e qualità. Expansion factor maggiori tendono a produrre feature più specifiche e granulari, un fenomeno che sarà approfondito nel Paragrafo~\ref{subsec:feature_splitting} sotto il nome di \textit{feature splitting}.
+Nella pratica, la scelta dell'expansion factor dipende dal dominio e dalla granularità desiderata. In~\parencite{oneill2024disentangling} si osserva che, per embedding di articoli scientifici, valori di $\rho$ tra 2 e 6 producono feature interpretabili con un buon compromesso tra capacità e qualità. Expansion factor maggiori tendono a produrre feature più specifiche e granulari, un fenomeno che sarà approfondito nel Paragrafo~\ref{subsubsec:feature_splitting} sotto il nome di \textit{feature splitting}.
 È importante sottolineare che l'overcompletezza, da sola, non garantisce il disentanglement. Uno spazio con $n > d$ dimensioni offre la \textit{possibilità} che ogni feature abbia un asse dedicato, ma nulla impedisce al modello di utilizzare questo spazio in modo ridondante o non interpretabile. È il vincolo di sparsità, presentato nel Paragrafo~\ref{subsec:loss_function}, a forzare il modello a sfruttare l'overcompletezza nel modo desiderato: poche attivazioni per input, ciascuna corrispondente a una feature distinta.
 
 \subsubsection{La linearità del decoder: la chiave del disentanglement}
@@ -281,14 +281,14 @@ La ricostruzione completa diventa quindi:
     \label{eq:reconstruction_explicit}
 \end{equation}
 Questa equazione è il cuore dell'interpretabilità dello Sparse Autoencoder. La ricostruzione $\hat{\mathbf{x}}$ è una \textit{combinazione lineare} dei vettori $\mathbf{w}_i$, pesata dalle attivazioni $h_i$. Ogni vettore $\mathbf{w}_i$ rappresenta il contributo che la feature $i$ apporta alla ricostruzione quando è attiva con intensità unitaria. L'attivazione $h_i$ modula questo contributo: se $h_i = 0$ la feature non contribuisce; se $h_i > 0$, il vettore $\mathbf{w}_i$ viene sommato alla ricostruzione con peso proporzionale all'intensità della feature.
-I vettori $\mathbf{w}_i$ sono esattamente le direzioni delle feature discusse nel Capitolo~\ref{sec:04_disentangling_dense_embeddings_with_sparse_autoencoders}. In quel contesto l'embedding era stato scritto come combinazione di direzioni sconosciute:
+I vettori $\mathbf{w}_i$ sono esattamente le direzioni delle feature discusse nel Capitolo~\ref{sec:04_disentanglement}. In quel contesto l'embedding era stato scritto come combinazione di direzioni sconosciute:
 \begin{equation}
     \mathbf{x} = \sum_i a_i \, \mathbf{w}_i
 \end{equation}
 con il problema di non conoscere né le direzioni $\mathbf{w}_i$ né le intensità $a_i$. Lo Sparse Autoencoder risolve entrambi i problemi: le direzioni $\mathbf{w}_i$ sono le colonne della matrice $W_d$, apprese durante l'addestramento e quindi note; le intensità $a_i$ corrispondono alle attivazioni $h_i$, calcolate dall'encoder per ogni input.
 \begin{notebox}
 \textbf{La chiave del disentanglement}\\
-Nel Capitolo~\ref{sec:04_disentangling_dense_embeddings_with_sparse_autoencoders} sono stati identificati due problemi della superposition:
+Nel Capitolo~\ref{sec:04_disentanglement} sono stati identificati due problemi della superposition:
 \begin{enumerate}
     \item \textbf{Opacità}: non sono note le direzioni $\mathbf{w}_i$ delle feature
     \item \textbf{Interferenza}: non è possibile recuperare le intensità $a_i$ a causa della non-ortogonalità
@@ -395,7 +395,7 @@ Questa normalizzazione ha due scopi. Il primo è separare il ruolo della direzio
     \label{fig:features_as_directions}
 \end{figure}
 
-È importante osservare che le direzioni $\mathbf{w}_i$ non sono, in generale, ortogonali tra loro. Questo potrebbe sembrare un fallimento: nel Capitolo~\ref{sec:04_disentangling_dense_embeddings_with_sparse_autoencoders} l'ortogonalità è stata presentata come condizione ideale per il disentanglement. Ma l'ortogonalità perfetta è impossibile quando il numero di feature $n$ supera la dimensionalità dello spazio $d$: in $\mathbb{R}^d$ possono esistere al massimo $d$ vettori mutuamente ortogonali. Con $n = 3072$ feature e $d = 768$ dimensioni, la non-ortogonalità è una necessità matematica.
+È importante osservare che le direzioni $\mathbf{w}_i$ non sono, in generale, ortogonali tra loro. Questo potrebbe sembrare un fallimento: nel Capitolo~\ref{sec:04_disentanglement} l'ortogonalità è stata presentata come condizione ideale per il disentanglement. Ma l'ortogonalità perfetta è impossibile quando il numero di feature $n$ supera la dimensionalità dello spazio $d$: in $\mathbb{R}^d$ possono esistere al massimo $d$ vettori mutuamente ortogonali. Con $n = 3072$ feature e $d = 768$ dimensioni, la non-ortogonalità è una necessità matematica.
 Ciò che lo Sparse Autoencoder garantisce non è l'ortogonalità delle direzioni, ma la loro \textit{esplicitezza}. A differenza della superposition originaria, dove le direzioni erano sconosciute e mescolate, qui ogni $\mathbf{w}_i$ è un vettore ispezionabile, memorizzato come colonna della matrice $W_d$. È possibile misurare il prodotto scalare $\mathbf{w}_i^T \mathbf{w}_j$ per quantificare la sovrapposizione tra due feature. È possibile visualizzare le direzioni, confrontarle, raggrupparle. L'interferenza geometrica non è eliminata, ma è resa trasparente.
 Questa trasparenza apre la strada all'interpretazione. Se $\mathbf{w}_i$ è una direzione nello spazio degli embedding, è lecito chiedersi: quali testi producono embedding allineati con questa direzione? In altri termini: per quali input l'attivazione $h_i$ è elevata? La risposta a questa domanda, vale a dire trovare i testi che ``accendono'' una feature, è il primo passo per assegnare un significato semantico alle direzioni apprese. Nel Paragrafo~\ref{subsec:interpretability} sarà illustrato come questo processo possa essere automatizzato utilizzando un modello linguistico come interprete.
 \begin{notebox}
@@ -582,7 +582,7 @@ La scelta del valore di $k$ è un iperparametro cruciale. Valori tipici variano 
     \item \textbf{SAE32}: $k = 32$ attivazioni, $n = 4d = 6144$ feature totali
     \item \textbf{SAE64}: $k = 64$ attivazioni, $n = 6d = 9216$ feature totali
 \end{itemize}
-All'aumentare di $k$ e $n$, le feature apprese tendono a diventare più granulari e specifiche, un fenomeno che sarà approfondito nel Paragrafo~\ref{subsec:feature_splitting}.
+All'aumentare di $k$ e $n$, le feature apprese tendono a diventare più granulari e specifiche, un fenomeno che sarà approfondito nel Paragrafo~\ref{subsubsec:feature_splitting}.
 
 
 \subsubsection{Auxiliary loss e il problema dei dead latents}
@@ -1420,4 +1420,4 @@ L'analisi dell'effective rank fornisce una prospettiva complementare alle featur
     \item Il \textbf{feature splitting} descrive l'evoluzione \textit{inter-modello}: come le feature si raffinano al crescere della capacità.
     \item L'\textbf{effective rank} fornisce una misura \textit{globale}: quanta ridondanza complessiva esiste nel codice sparso.
 \end{itemize}
-I risultati empirici dell'analisi dell'effective rank su PRISMA saranno presentati nel Capitolo~\ref{chap:results}.
+I risultati empirici dell'analisi dell'effective rank su PRISMA saranno presentati nel Capitolo~\ref{sec:06_risultati}.

@@ -1,22 +1,20 @@
 \newpage
 
 \section{Word Embeddings}
-\ref{sec:03_word_embeddings}
-
-% --- Testo introduttivo del capitolo (richiesto dal prof) ---
-Il presente capitolo affronta il problema della rappresentazione computazionale del significato linguistico. Nella prima parte viene introdotto il concetto di embedding testuale, a partire dalle basi teoriche che ne motivano la costruzione: la distinzione tra significante e significato, gli assi saussuriani del linguaggio e le ipotesi distribuzionale e di Osgood. Nella seconda parte vengono presentati gli embeddings statici, sia nella variante basata su conteggi (matrici termine--documento e termine--termine) sia in quella predittiva (Word2Vec). La terza parte ripercorre l'evoluzione verso gli embeddings dinamici, dalle reti ricorrenti fino all'architettura Transformer e al modello BERT~\parencite{devlin2018bert}, i cui embeddings densi costituiscono l'oggetto di analisi dei capitoli successivi.
-
+\label{sec:03_word_embeddings}
 \epigraph{
     Nets are for fish; once you get the fish you can forget the net.\\
     Words are for meaning; once you get the meaning you can forget the words.
 }{Zhuangzi}
+Il presente capitolo affronta il problema della rappresentazione computazionale del significato linguistico. Nella prima parte viene introdotto il concetto di embedding testuale, a partire dalle basi teoriche che ne motivano la costruzione: la distinzione tra significante e significato, gli assi saussuriani del linguaggio e le ipotesi distribuzionale e di Osgood. Nella seconda parte vengono presentati gli embeddings statici, sia nella variante basata su conteggi (matrici termine--documento e termine--termine) sia in quella predittiva (Word2Vec). La terza parte ripercorre l'evoluzione verso gli embeddings dinamici, dalle reti ricorrenti fino all'architettura Transformer e al modello BERT~\parencite{devlin2018bert}, i cui embeddings densi costituiscono l'oggetto di analisi dei capitoli successivi.
+
 \newpage
 
 \subsection{Dalla semantica alla rappresentazione vettoriale}
 \label{sec:semantics_to_vectors}
 
 Questo capitolo introduce il concetto di \textbf{embedding testuale}: una rappresentazione matematica che mappa simboli linguistici discreti (parole, token) in vettori continui capaci di catturare relazioni semantiche. Gli embeddings costituiscono il ponte tra il linguaggio naturale e l'elaborazione computazionale, permettendo alle macchine di manipolare il significato anziché limitarsi a confrontare stringhe di caratteri.
-Come sarà possibile osservare, la capacità di rappresentare efficacemente il significato linguistico in forma vettoriale è fondamentale per il lavoro sviluppato in questa tesi: gli sparse autoencoders (Capitolo~\ref{sec:autoencoders}) verranno applicati proprio a questi embeddings densi per estrarne strutture interpretabili. Prima di arrivare a tale applicazione, è necessario comprendere come si costruiscono gli embeddings, quali proprietà possiedono e come si sono evoluti dai modelli statici a quelli contestuali.
+Come sarà possibile osservare, la capacità di rappresentare efficacemente il significato linguistico in forma vettoriale è fondamentale per il lavoro sviluppato in questa tesi: gli sparse autoencoders (Capitolo~\ref{sec:02_autoencoders}) verranno applicati proprio a questi embeddings densi per estrarne strutture interpretabili. Prima di arrivare a tale applicazione, è necessario comprendere come si costruiscono gli embeddings, quali proprietà possiedono e come si sono evoluti dai modelli statici a quelli contestuali.
 
 \subsubsection{Simboli e significati}
 \label{subsubsec:symbols_meanings}
@@ -59,7 +57,7 @@ Apprendere questa relazione è la \textit{conditio sine qua non} per permettere 
 \begin{figure}[h!]
     \centering
     \includegraphics[width=0.5\textwidth]{pictures/cap3/Ferdinand_de_Saussure_by_Jullien.png}
-    \caption{Ferdinand de Saussure, fondatore della linguistica strutturale e teorico dei rapporti sintagmatici e associativi (paradigmatici) del linguaggio \cite{saussure_wikipedia_image}.}
+    \caption{Ferdinand de Saussure, fondatore della linguistica strutturale e teorico dei rapporti sintagmatici e associativi (paradigmatici) del linguaggio. Fonte: \cite{wikipedia2024saussure}.}
     \label{fig:saussure}
 \end{figure}
 Per addestrare modelli capaci di catturare i significati dai significanti, li si pone nella condizione di analizzare enormi corpora di testo attraverso le due dimensioni fondamentali lungo le quali si articola ogni lingua: gli \textbf{assi saussuriani}.
@@ -271,7 +269,7 @@ Gli embeddings dinamici, o contestuali, producono quindi una rappresentazione di
 \caption{Classificazione delle principali tipologie di embeddings trattate nel capitolo.}
 \label{fig:classificazione_embeddings}
 \end{figure}
-La Figura~\ref{fig:classificazione_embeddings} riassume questa tassonomia. Nei paragrafi successivi sarà analizzata in dettaglio ciascuna di queste famiglie, comprendendo come si costruiscono, quali proprietà possiedono e quali limiti presentano. Questo percorso condurrà fino agli embeddings densi prodotti da modelli come BERT, che costituiscono l'input degli Sparse Autoencoders discussi nel Capitolo~\ref{sec:04_disentangling_dense_embeddings_with_sparse_autoencoders}.
+La Figura~\ref{fig:classificazione_embeddings} riassume questa tassonomia. Nei paragrafi successivi sarà analizzata in dettaglio ciascuna di queste famiglie, comprendendo come si costruiscono, quali proprietà possiedono e quali limiti presentano. Questo percorso condurrà fino agli embeddings densi prodotti da modelli come BERT, che costituiscono l'input degli Sparse Autoencoders discussi nel Capitolo~\ref{sec:04_disentanglement}.
 \subsection{Embeddings statici}
 \label{sec:static_embeddings}
 In questo paragrafo vengono introdotti gli embeddings statici, rappresentazioni in cui ogni parola del vocabolario è associata a un unico vettore fisso, indipendente dal contesto in cui compare. Si distingueranno due approcci fondamentali: i metodi \textbf{count-based}, che costruiscono rappresentazioni a partire da statistiche di co-occorrenza, e i metodi \textbf{predittivi}, che apprendono embeddings tramite reti neurali addestrate a predire parole in contesto.
@@ -531,7 +529,7 @@ A questo punto la domanda diventa: come si costruisce una funzione $f$ capace di
     \item I Transformer~\parencite{vaswani2017attention} eliminano la ricorrenza usando solo self-attention, rendendo il calcolo parallelizzabile e l'addestramento su larga scala finalmente fattibile.
     \item BERT~\parencite{devlin2018bert} sfrutta la self-attention bidirezionale con un nuovo obiettivo di pre-training, il \textit{masked language modeling}, producendo embeddings contestuali potenti ma opachi.
 \end{enumerate}
-Ogni architettura risolve un limite della precedente, introducendo al contempo nuove sfide. Questo percorso condurrà fino agli embeddings densi di BERT, la cui opacità motiva il lavoro della presente tesi: nel Capitolo~\ref{sec:04_disentangling_dense_embeddings_with_sparse_autoencoders} saranno introdotti gli Sparse Autoencoders come strumento per estrarre feature interpretabili da queste rappresentazioni.
+Ogni architettura risolve un limite della precedente, introducendo al contempo nuove sfide. Questo percorso condurrà fino agli embeddings densi di BERT, la cui opacità motiva il lavoro della presente tesi: nel Capitolo~\ref{sec:04_disentanglement} saranno introdotti gli Sparse Autoencoders come strumento per estrarre feature interpretabili da queste rappresentazioni.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
