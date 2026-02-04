@@ -1,6 +1,8 @@
 \section{PRISMA: Projection of Representations for Interpretability via Sparse Monosemantic Autoencoders}
 \label{sec:05_prisma}
 
+Questo capitolo presenta PRISMA, un'applicazione sviluppata in questa tesi per la scomposizione degli embedding in feature interpretabili mediante Sparse Autoencoder. Nel Paragrafo~\ref{subsec:prisma_intro} viene introdotta l'idea centrale e l'analogia ottica che ispira il nome. Il Paragrafo~\ref{subsec:sae_architecture} descrive l'architettura dello Sparse Autoencoder, vale a dire l'encoder non lineare, lo spazio latente overcomplete e il decoder lineare. Nel Paragrafo~\ref{subsec:loss_function} sono analizzate la funzione di perdita e le strategie di addestramento, con particolare attenzione al vincolo di sparsità Top-K e alla perdita ausiliaria. Il Paragrafo~\ref{subsec:interpretability} illustra il processo di interpretazione automatica delle feature tramite un modello linguistico. Infine, il Paragrafo~\ref{subsec:feature_analysis} affronta l'analisi della struttura delle feature, introducendo le \textit{feature families}, il fenomeno del \textit{feature splitting} e la metrica dell'Effective Rank come contributo originale di questa tesi.
+
 \epigraph{
     The purpose of abstraction is not to be vague, but to create a new semantic level in which one can be absolutely precise.
 }{Edsger W. Dijkstra}
@@ -9,14 +11,14 @@
 
 \subsection{Fare luce nella black box degli embedding}
 \label{subsec:prisma_intro}
-Nel capitolo precedente abbiamo identificato i due ostacoli fondamentali che impediscono di interpretare le rappresentazioni neurali: l'opacità—non conosciamo le direzioni $\mathbf{w}_i$ lungo cui sono codificate le feature—e l'interferenza—anche conoscendole, non potremmo recuperare le intensità $a_i$ in modo pulito a causa della non-ortogonalità. Abbiamo anche delineato una via d'uscita teorica: espandere lo spazio delle rappresentazioni e imporre sparsità, così da forzare ogni feature a occupare un asse dedicato.
+Nel capitolo precedente sono stati identificati i due ostacoli fondamentali che impediscono di interpretare le rappresentazioni neurali: l'opacità, vale a dire il fatto che non sono note le direzioni $\mathbf{w}_i$ lungo cui sono codificate le feature, e l'interferenza, vale a dire l'impossibilità di recuperare le intensità $a_i$ in modo pulito a causa della non-ortogonalità. È stata anche delineata una via d'uscita teorica: espandere lo spazio delle rappresentazioni e imporre sparsità, così da forzare ogni feature a occupare un asse dedicato.
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=\textwidth]{pictures/cap5/home.png}
     \caption{Home page di PRISMA, l'applicazione sviluppata in questa tesi per la scomposizione degli embedding in feature interpretabili.}
     \label{fig:prisma_home}
 \end{figure}
-Questo capitolo presenta PRISMA (\textbf{P}rojection of \textbf{R}epresentations for \textbf{I}nterpretability via \textbf{S}parse \textbf{M}onosemantic \textbf{A}utoencoders), un'applicazione sviluppata in questa tesi che implementa concretamente questa strategia. Il nome non è casuale: richiama l'analogia con il prisma ottico, uno strumento che non genera luce, ma la scompone. Quando un fascio di luce bianca attraversa un prisma, ne emergono le componenti spettrali—rosso, arancione, giallo, e così via—che erano già presenti nel fascio originario, ma indistinguibili a occhio nudo. Il prisma non aggiunge informazione: la rende visibile, separando ciò che era mescolato.
+Questo capitolo presenta PRISMA (\textbf{P}rojection of \textbf{R}epresentations for \textbf{I}nterpretability via \textbf{S}parse \textbf{M}onosemantic \textbf{A}utoencoders), un'applicazione sviluppata in questa tesi che implementa concretamente questa strategia. Il nome non è casuale: richiama l'analogia con il prisma ottico, uno strumento che non genera luce, ma la scompone. Quando un fascio di luce bianca attraversa un prisma, ne emergono le componenti spettrali, rosso, arancione, giallo, e così via, che erano già presenti nel fascio originario, ma indistinguibili a occhio nudo. Il prisma non aggiunge informazione: la rende visibile, separando ciò che era mescolato.
 \begin{figure}[htbp]
     \centering
     \begin{tikzpicture}[scale=1.0]
@@ -56,17 +58,17 @@ Questo capitolo presenta PRISMA (\textbf{P}rojection of \textbf{R}epresentations
     \label{fig:prisma_analogy}
 \end{figure}
 
-PRISMA opera in modo analogo sugli embedding. Un vettore denso $\mathbf{x} \in \mathbb{R}^{768}$, prodotto da un modello come BERT, contiene informazione semantica ricchissima—ma opaca, distribuita su dimensioni che non sappiamo interpretare. PRISMA proietta questo vettore in uno spazio di dimensionalità molto maggiore ($\mathbb{R}^{n}$ con $n \gg 768$), forzando al contempo una rappresentazione sparsa: solo poche componenti $h_i$ possono essere attive per ogni input. Il risultato è una scomposizione in cui ogni componente corrisponde a una feature semantica distinta—un concetto atomico, interpretabile, che possiamo nominare.
-L'analogia ha anche una seconda lettura. Il prisma, scomponendo la luce, ci permette di vedere ciò che prima era invisibile. Allo stesso modo, PRISMA fa luce sulla black box degli embedding: non aggiunge capacità predittiva al modello originario, ma rende trasparente ciò che il modello ha appreso. Se la superposition è il meccanismo con cui le reti neurali nascondono la complessità—comprimendo migliaia di concetti in poche centinaia di dimensioni—PRISMA è lo strumento che inverte questo processo, restituendoci una rappresentazione in cui possiamo finalmente leggere quali concetti sono presenti e con quale intensità.
-Nel resto di questo capitolo descriveremo l'architettura tecnica che realizza questa scomposizione—lo Sparse Autoencoder—e le metodologie per interpretare automaticamente le feature estratte. Vedremo anche come le feature non siano entità isolate, ma si organizzino in strutture gerarchiche (\textit{feature families}) e come la loro granularità emerga progressivamente all'aumentare della capacità del modello (\textit{feature splitting}).
+PRISMA opera in modo analogo sugli embedding. Un vettore denso $\mathbf{x} \in \mathbb{R}^{768}$, prodotto da un modello come BERT~\parencite{devlin2018bert}, contiene informazione semantica ricchissima, ma opaca, distribuita su dimensioni che non è possibile interpretare. PRISMA proietta questo vettore in uno spazio di dimensionalità molto maggiore ($\mathbb{R}^{n}$ con $n \gg 768$), forzando al contempo una rappresentazione sparsa: solo poche componenti $h_i$ possono essere attive per ogni input. Il risultato è una scomposizione in cui ogni componente corrisponde a una feature semantica distinta, vale a dire un concetto atomico, interpretabile, a cui è possibile assegnare un nome.
+L'analogia ha anche una seconda lettura. Il prisma, scomponendo la luce, permette di vedere ciò che prima era invisibile. Allo stesso modo, PRISMA fa luce sulla black box degli embedding: non aggiunge capacità predittiva al modello originario, ma rende trasparente ciò che il modello ha appreso. Se la superposition è il meccanismo con cui le reti neurali nascondono la complessità, comprimendo migliaia di concetti in poche centinaia di dimensioni, PRISMA è lo strumento che inverte questo processo, restituendo una rappresentazione in cui è possibile finalmente leggere quali concetti sono presenti e con quale intensità.
+Nel resto di questo capitolo sarà descritta l'architettura tecnica che realizza questa scomposizione, vale a dire lo Sparse Autoencoder, e le metodologie per interpretare automaticamente le feature estratte. Sarà inoltre illustrato come le feature non siano entità isolate, ma si organizzino in strutture gerarchiche (\textit{feature families}) e come la loro granularità emerga progressivamente all'aumentare della capacità del modello (\textit{feature splitting}).
+
 \subsection{Architettura dello Sparse Autoencoder}
 \label{subsec:sae_architecture}
 
-Lo SparseAutoencoder (SAE) è l'architettura neurale al cuore di PRISMA. Come ogni autoencoder, è composto da un encoder che mappa l'input in una rappresentazione latente e un decoder che ricostruisce l'input a partire da essa. La differenza cruciale rispetto agli autoencoder classici—trattati nel Capitolo 2—risiede in due scelte progettuali che invertono la logica tradizionale: lo spazio latente è \textit{overcomplete} anziché compresso, e le attivazioni sono forzate a essere \textit{sparse}.
+Lo Sparse Autoencoder (SAE) è l'architettura neurale al cuore di PRISMA. Come ogni autoencoder, è composto da un encoder che mappa l'input in una rappresentazione latente e un decoder che ricostruisce l'input a partire da essa. La differenza cruciale rispetto agli autoencoder classici, trattati nel Capitolo 2, risiede in due scelte progettuali che invertono la logica tradizionale: lo spazio latente è \textit{overcomplete} anziché compresso, e le attivazioni sono forzate a essere \textit{sparse}.
 \subsubsection{Panoramica dell'architettura}
 \label{subsubsec:sae_overview}
-
-Seguiamo il formalismo di O'Neill et al.~\parencite{oneill2024disentangling}. Sia $\mathbf{x} \in \mathbb{R}^d$ l'embedding di input (ad esempio, il vettore a 768 dimensioni prodotto da BERT) e $\mathbf{h} \in \mathbb{R}^n$ la rappresentazione latente, con $n > d$. L'architettura è definita da due insiemi di parametri apprendibili:
+Si segue il formalismo di~\parencite{oneill2024disentangling}. Sia $\mathbf{x} \in \mathbb{R}^d$ l'embedding di input (ad esempio, il vettore a 768 dimensioni prodotto da BERT~\parencite{devlin2018bert}) e $\mathbf{h} \in \mathbb{R}^n$ la rappresentazione latente, con $n > d$. L'architettura è definita da due insiemi di parametri apprendibili:
 \begin{equation}
     \theta = \{W_e, \mathbf{b}_e\}, \qquad \phi = \{W_d, \mathbf{b}_d\}
 \end{equation}
@@ -83,7 +85,7 @@ Il \textbf{decoder} $g_\phi$ ricostruisce l'input dalla rappresentazione latente
     \label{eq:sae_decoder}
 \end{equation}
 dove $W_d \in \mathbb{R}^{d \times n}$ è la matrice dei pesi e $\mathbf{b}_d \in \mathbb{R}^d$ è il vettore di bias.
-La Figura~\ref{fig:sae_architecture} illustra il flusso dei dati attraverso l'architettura. Si noti immediatamente l'asimmetria nelle dimensioni: l'input $\mathbf{x}$ ha $d$ componenti, mentre la rappresentazione latente $\mathbf{h}$ ne ha $n \gg d$. Questa espansione—l'opposto della compressione tipica degli autoencoder—è la prima chiave per ottenere il disentanglement. La seconda chiave, visibile nei pochi cerchi verdi tra i molti grigi, è la sparsità: per ogni input, solo una piccola frazione delle $n$ componenti di $\mathbf{h}$ è diversa da zero.
+La Figura~\ref{fig:sae_architecture} illustra il flusso dei dati attraverso l'architettura. È possibile notare immediatamente l'asimmetria nelle dimensioni: l'input $\mathbf{x}$ ha $d$ componenti, mentre la rappresentazione latente $\mathbf{h}$ ne ha $n \gg d$. Questa espansione, l'opposto della compressione tipica degli autoencoder, è la prima chiave per ottenere il disentanglement. La seconda chiave, visibile nei pochi cerchi verdi tra i molti grigi, è la sparsità: per ogni input, solo una piccola frazione delle $n$ componenti di $\mathbf{h}$ è diversa da zero.
 \begin{figure}[htbp]
     \centering
     \begin{tikzpicture}[scale=0.9]
@@ -143,25 +145,25 @@ La Figura~\ref{fig:sae_architecture} illustra il flusso dei dati attraverso l'ar
     \caption{Architettura dello Sparse Autoencoder. L'encoder $f_\theta$ (non lineare) mappa l'input $\mathbf{x}$ in uno spazio latente \textit{overcomplete} di dimensione $n \gg d$. La sparsità forza solo poche componenti di $\mathbf{h}$ (cerchi verdi) ad essere attive, mentre le altre (cerchi grigi) restano nulle. Il decoder $g_\phi$ (lineare) ricostruisce l'input come combinazione delle sole direzioni attive.}
     \label{fig:sae_architecture}
 \end{figure}
-Un'asimmetria meno evidente, ma altrettanto importante, riguarda la natura delle due trasformazioni: l'encoder è non lineare (Equazione~\ref{eq:sae_encoder}), mentre il decoder è lineare (Equazione~\ref{eq:sae_decoder}). Questa scelta non è arbitraria: come vedremo nelle prossime sezioni, è precisamente la linearità del decoder a garantire che le feature estratte siano interpretabili come direzioni nello spazio degli embedding—la condizione necessaria per ottenere il disentanglement discusso nel Capitolo~\ref{sec:04_disentangling_dense_embeddings_with_sparse_autoencoders}.
-subsubsection{L'encoder: una proiezione non lineare}
+Un'asimmetria meno evidente, ma altrettanto importante, riguarda la natura delle due trasformazioni: l'encoder è non lineare (come in Eq.~\ref{eq:sae_encoder}), mentre il decoder è lineare (come in Eq.~\ref{eq:sae_decoder}). Questa scelta non è arbitraria: come sarà illustrato nei prossimi paragrafi, è precisamente la linearità del decoder a garantire che le feature estratte siano interpretabili come direzioni nello spazio degli embedding, la condizione necessaria per ottenere il disentanglement discusso nel Capitolo~\ref{sec:04_disentangling_dense_embeddings_with_sparse_autoencoders}.
+\subsubsection{L'encoder: una proiezione non lineare}
 \label{subsubsec:sae_encoder}
 
-L'encoder ha il compito di analizzare l'embedding in ingresso e determinare quali feature sono presenti e con quale intensità. Riprendendo l'Equazione~\ref{eq:sae_encoder}:
+L'encoder ha il compito di analizzare l'embedding in ingresso e determinare quali feature sono presenti e con quale intensità. Riprendendo l'Eq.~\ref{eq:sae_encoder}:
 \begin{equation}
     \mathbf{h} = f_\theta(\mathbf{x}) = \sigma(W_e \mathbf{x} + \mathbf{b}_e)
 \end{equation}
 questa trasformazione si compone di due passaggi: una proiezione lineare $W_e \mathbf{x} + \mathbf{b}_e$ seguita da una non linearità $\sigma(\cdot)$.
-La matrice $W_e \in \mathbb{R}^{n \times d}$ ha $n$ righe, una per ogni componente dello spazio latente. Indichiamo con $\mathbf{e}_i^T$ la $i$-esima riga: è un vettore in $\mathbb{R}^d$ che vive nello stesso spazio dell'input $\mathbf{x}$. La proiezione lineare calcola, per ogni feature $i$, un punteggio grezzo:
+La matrice $W_e \in \mathbb{R}^{n \times d}$ ha $n$ righe, una per ogni componente dello spazio latente. Si indichi con $\mathbf{e}_i^T$ la $i$-esima riga: è un vettore in $\mathbb{R}^d$ che vive nello stesso spazio dell'input $\mathbf{x}$. La proiezione lineare calcola, per ogni feature $i$, un punteggio grezzo:
 \begin{equation}
     z_i = \mathbf{e}_i^T \mathbf{x} + b_{e,i}
 \end{equation}
 Questo punteggio misura quanto l'input $\mathbf{x}$ sia allineato con la direzione $\mathbf{e}_i$: se i due vettori puntano in direzioni simili, il prodotto scalare sarà elevato; se puntano in direzioni opposte, sarà negativo.
-La non linearità $\sigma(\cdot)$—tipicamente la funzione ReLU—trasforma i punteggi grezzi nelle attivazioni finali:
+La non linearità $\sigma(\cdot)$, tipicamente la funzione ReLU, trasforma i punteggi grezzi nelle attivazioni finali:
 \begin{equation}
     h_i = \sigma(z_i) = \max(0, z_i)
 \end{equation}
-La scelta della ReLU serve a due scopi. Il primo è garantire attivazioni non negative: una feature è ``presente'' con una certa intensità positiva, oppure è ``assente'' (attivazione nulla). Non avrebbe senso, dal punto di vista interpretativo, che una feature fosse presente con intensità negativa. Il secondo scopo è indurre sparsità naturale: la ReLU azzera tutte le pre-attivazioni negative, contribuendo alla sparsità della rappresentazione anche prima di applicare vincoli espliciti come il Top-K che vedremo nella Sezione~\ref{subsec:loss_function}.
+La scelta della ReLU serve a due scopi. Il primo è garantire attivazioni non negative: una feature è ``presente'' con una certa intensità positiva, oppure è ``assente'' (attivazione nulla). Non avrebbe senso, dal punto di vista interpretativo, che una feature fosse presente con intensità negativa. Il secondo scopo è indurre sparsità naturale: la ReLU azzera tutte le pre-attivazioni negative, contribuendo alla sparsità della rappresentazione anche prima di applicare vincoli espliciti come il Top-K che sarà presentato nel Paragrafo~\ref{subsec:loss_function}.
 \begin{figure}[htbp]
     \centering
     \begin{tikzpicture}[scale=1.0]
@@ -195,13 +197,13 @@ La scelta della ReLU serve a due scopi. Il primo è garantire attivazioni non ne
     \label{fig:encoder_detection}
 \end{figure}
 
-È importante chiarire il ruolo di questi vettori $\mathbf{e}_i$. Essi non coincidono con le direzioni $\mathbf{w}_i$ introdotte nel Capitolo~\ref{sec:04_disentangling_dense_embeddings_with_sparse_autoencoders}: le $\mathbf{w}_i$ sono le direzioni lungo cui le feature sono \textit{codificate} nello spazio degli embedding, e corrispondono—come vedremo—alle colonne della matrice del decoder $W_d$. Le $\mathbf{e}_i$, invece, sono direzioni ausiliarie che l'encoder utilizza per \textit{rilevare} le feature nell'input. In uno scenario ideale con feature perfettamente ortogonali, le due coinciderebbero: per rilevare una feature basterebbe proiettare lungo la sua stessa direzione. Ma nella superposition le $\mathbf{w}_i$ non sono ortogonali, e proiettare direttamente lungo di esse causerebbe l'interferenza descritta nel capitolo precedente. L'encoder impara quindi direzioni $\mathbf{e}_i \neq \mathbf{w}_i$ che compensano questa sovrapposizione.
-Dal punto di vista dell'interpretabilità, le $\mathbf{e}_i$ non hanno un significato semantico diretto: sono un meccanismo interno che serve all'encoder per svolgere il suo compito. Ciò che ci interessa—e che costituisce il vero output interpretabile del SAE—sono le attivazioni $h_i$ e le direzioni $\mathbf{w}_i$ del decoder. La corrispondenza è uno-a-uno: per ogni $i \in \{1, \dots, n\}$, il vettore $\mathbf{e}_i$ rileva la feature $i$ producendo l'attivazione $h_i$, che a sua volta pesa la direzione $\mathbf{w}_i$ nella ricostruzione. Ma mentre $\mathbf{e}_i$ è un dettaglio implementativo, $\mathbf{w}_i$ rappresenta la feature stessa nello spazio semantico.
-La non linearità dell'encoder è dunque essenziale: permette di implementare una logica di rilevamento sofisticata in presenza di sovrapposizione. Il decoder, come vedremo, ha un compito diverso—ricostruire l'input come combinazione di feature—e per quel compito la linearità non è solo possibile, ma necessaria.
+È importante chiarire il ruolo di questi vettori $\mathbf{e}_i$. Essi non coincidono con le direzioni $\mathbf{w}_i$ introdotte nel Capitolo~\ref{sec:04_disentangling_dense_embeddings_with_sparse_autoencoders}: le $\mathbf{w}_i$ sono le direzioni lungo cui le feature sono \textit{codificate} nello spazio degli embedding, e corrispondono, come sarà illustrato, alle colonne della matrice del decoder $W_d$. Le $\mathbf{e}_i$, invece, sono direzioni ausiliarie che l'encoder utilizza per \textit{rilevare} le feature nell'input. In uno scenario ideale con feature perfettamente ortogonali, le due coinciderebbero: per rilevare una feature basterebbe proiettare lungo la sua stessa direzione. Ma nella superposition le $\mathbf{w}_i$ non sono ortogonali, e proiettare direttamente lungo di esse causerebbe l'interferenza descritta nel capitolo precedente. L'encoder impara quindi direzioni $\mathbf{e}_i \neq \mathbf{w}_i$ che compensano questa sovrapposizione.
+Dal punto di vista dell'interpretabilità, le $\mathbf{e}_i$ non hanno un significato semantico diretto: sono un meccanismo interno che serve all'encoder per svolgere il suo compito. Ciò che costituisce il vero output interpretabile del SAE sono le attivazioni $h_i$ e le direzioni $\mathbf{w}_i$ del decoder. La corrispondenza è uno-a-uno: per ogni $i \in \{1, \dots, n\}$, il vettore $\mathbf{e}_i$ rileva la feature $i$ producendo l'attivazione $h_i$, che a sua volta pesa la direzione $\mathbf{w}_i$ nella ricostruzione. Ma mentre $\mathbf{e}_i$ è un dettaglio implementativo, $\mathbf{w}_i$ rappresenta la feature stessa nello spazio semantico.
+La non linearità dell'encoder è dunque essenziale: permette di implementare una logica di rilevamento sofisticata in presenza di sovrapposizione. Il decoder, come sarà illustrato di seguito, ha un compito diverso, vale a dire ricostruire l'input come combinazione di feature, e per quel compito la linearità non è solo possibile, ma necessaria.
 
 \subsubsection{Lo spazio latente overcomplete}
 \label{subsubsec:sae_overcomplete}
-Nel Capitolo~\ref{sec:04_disentangling_dense_embeddings_with_sparse_autoencoders} abbiamo identificato il paradosso della capacità: un modello come BERT rappresenta decine di migliaia di concetti con soli 768 neuroni. La superposition risolve questo problema comprimendo le feature come direzioni oblique, ma al costo dell'opacità e dell'interferenza. Se vogliamo invertire questo processo—ottenere una rappresentazione in cui ogni feature abbia un asse dedicato—servono più dimensioni di quelle originarie.
+Nel Capitolo~\ref{sec:04_disentangling_dense_embeddings_with_sparse_autoencoders} è stato identificato il paradosso della capacità: un modello come BERT~\parencite{devlin2018bert} rappresenta decine di migliaia di concetti con soli 768 neuroni. La superposition risolve questo problema comprimendo le feature come direzioni oblique, ma al costo dell'opacità e dell'interferenza. Se si intende invertire questo processo, vale a dire ottenere una rappresentazione in cui ogni feature abbia un asse dedicato, servono più dimensioni di quelle originarie.
 Questa è l'intuizione alla base dello spazio latente \textit{overcomplete}. A differenza degli autoencoder classici, che comprimono l'input in un bottleneck di dimensionalità inferiore ($n < d$), lo Sparse Autoencoder espande la rappresentazione in uno spazio più grande:
 \begin{equation}
     n > d
@@ -258,17 +260,17 @@ e assume tipicamente valori compresi tra 2 e 9~\parencite{oneill2024disentanglin
     \caption{Sparse Autoencoder: lo spazio latente è overcomplete ($n > d$), con abbastanza dimensioni affinché ogni feature possa avere un asse dedicato.}
     \label{fig:sae_overcomplete}
 \end{figure}
-La scelta di $\rho$ riflette un compromesso. Valori troppo bassi potrebbero non fornire abbastanza dimensioni per rappresentare tutte le feature del modello originario: se BERT codifica 50.000 concetti in 768 dimensioni, un expansion factor $\rho = 2$ fornirebbe solo 1.536 assi—ancora insufficienti per il disentanglement completo. Valori troppo alti, d'altra parte, aumentano il costo computazionale e il rischio di overfitting: con troppe dimensioni disponibili, il modello potrebbe apprendere feature spurie o ridondanti.
-Nella pratica, la scelta dell'expansion factor dipende dal dominio e dalla granularità desiderata. O'Neill et al.~\parencite{oneill2024disentangling} osservano che, per embedding di articoli scientifici, valori di $\rho$ tra 2 e 6 producono feature interpretabili con un buon compromesso tra capacità e qualità. Expansion factor maggiori tendono a produrre feature più specifiche e granulari—un fenomeno che esploreremo nella Sezione~\ref{subsec:feature_splitting} sotto il nome di \textit{feature splitting}.
-È importante sottolineare che l'overcompletezza, da sola, non garantisce il disentanglement. Uno spazio con $n > d$ dimensioni offre la \textit{possibilità} che ogni feature abbia un asse dedicato, ma nulla impedisce al modello di utilizzare questo spazio in modo ridondante o non interpretabile. È il vincolo di sparsità—che vedremo nella Sezione~\ref{subsec:loss_function}—a forzare il modello a sfruttare l'overcompletezza nel modo desiderato: poche attivazioni per input, ciascuna corrispondente a una feature distinta.
+La scelta di $\rho$ riflette un compromesso. Valori troppo bassi potrebbero non fornire abbastanza dimensioni per rappresentare tutte le feature del modello originario: se BERT codifica 50.000 concetti in 768 dimensioni, un expansion factor $\rho = 2$ fornirebbe solo 1.536 assi, ancora insufficienti per il disentanglement completo. Valori troppo alti, d'altra parte, aumentano il costo computazionale e il rischio di overfitting: con troppe dimensioni disponibili, il modello potrebbe apprendere feature spurie o ridondanti.
+Nella pratica, la scelta dell'expansion factor dipende dal dominio e dalla granularità desiderata. In~\parencite{oneill2024disentangling} si osserva che, per embedding di articoli scientifici, valori di $\rho$ tra 2 e 6 producono feature interpretabili con un buon compromesso tra capacità e qualità. Expansion factor maggiori tendono a produrre feature più specifiche e granulari, un fenomeno che sarà approfondito nel Paragrafo~\ref{subsec:feature_splitting} sotto il nome di \textit{feature splitting}.
+È importante sottolineare che l'overcompletezza, da sola, non garantisce il disentanglement. Uno spazio con $n > d$ dimensioni offre la \textit{possibilità} che ogni feature abbia un asse dedicato, ma nulla impedisce al modello di utilizzare questo spazio in modo ridondante o non interpretabile. È il vincolo di sparsità, presentato nel Paragrafo~\ref{subsec:loss_function}, a forzare il modello a sfruttare l'overcompletezza nel modo desiderato: poche attivazioni per input, ciascuna corrispondente a una feature distinta.
 
 \subsubsection{La linearità del decoder: la chiave del disentanglement}
 \label{subsubsec:sae_decoder_linearity}
-Abbiamo visto che l'encoder è una funzione non lineare: la ReLU introduce una soglia che azzera le attivazioni negative, permettendo di rilevare le feature in modo selettivo. Il decoder, al contrario, è una trasformazione puramente lineare. Riprendendo l'Equazione~\ref{eq:sae_decoder}:
+Si è visto che l'encoder è una funzione non lineare: la ReLU introduce una soglia che azzera le attivazioni negative, permettendo di rilevare le feature in modo selettivo. Il decoder, al contrario, è una trasformazione puramente lineare. Riprendendo l'Eq.~\ref{eq:sae_decoder}:
 \begin{equation}
     \hat{\mathbf{x}} = g_\phi(\mathbf{h}) = W_d \mathbf{h} + \mathbf{b}_d
 \end{equation}
-Questa asimmetria non è un dettaglio implementativo: è la scelta architetturale che rende possibile il disentanglement. Per capire perché, espandiamo il prodotto matrice-vettore $W_d \mathbf{h}$. La matrice $W_d \in \mathbb{R}^{d \times n}$ ha $n$ colonne; indichiamo la $i$-esima colonna con $\mathbf{w}_i \in \mathbb{R}^d$. Il vettore $\mathbf{h} \in \mathbb{R}^n$ ha $n$ componenti $h_1, h_2, \dots, h_n$. Il prodotto può essere scritto come:
+Questa asimmetria non è un dettaglio implementativo: è la scelta architetturale che rende possibile il disentanglement. Per comprenderne il motivo, è utile espandere il prodotto matrice-vettore $W_d \mathbf{h}$. La matrice $W_d \in \mathbb{R}^{d \times n}$ ha $n$ colonne; si indichi la $i$-esima colonna con $\mathbf{w}_i \in \mathbb{R}^d$. Il vettore $\mathbf{h} \in \mathbb{R}^n$ ha $n$ componenti $h_1, h_2, \dots, h_n$. Il prodotto può essere scritto come:
 \begin{equation}
     W_d \mathbf{h} = \sum_{i=1}^{n} h_i \cdot \mathbf{w}_i
     \label{eq:decoder_linear_combination}
@@ -279,17 +281,17 @@ La ricostruzione completa diventa quindi:
     \label{eq:reconstruction_explicit}
 \end{equation}
 Questa equazione è il cuore dell'interpretabilità dello Sparse Autoencoder. La ricostruzione $\hat{\mathbf{x}}$ è una \textit{combinazione lineare} dei vettori $\mathbf{w}_i$, pesata dalle attivazioni $h_i$. Ogni vettore $\mathbf{w}_i$ rappresenta il contributo che la feature $i$ apporta alla ricostruzione quando è attiva con intensità unitaria. L'attivazione $h_i$ modula questo contributo: se $h_i = 0$ la feature non contribuisce; se $h_i > 0$, il vettore $\mathbf{w}_i$ viene sommato alla ricostruzione con peso proporzionale all'intensità della feature.
-I vettori $\mathbf{w}_i$ sono esattamente le direzioni delle feature di cui abbiamo parlato nel Capitolo~\ref{sec:04_disentangling_dense_embeddings_with_sparse_autoencoders}. Là avevamo scritto l'embedding come combinazione di direzioni sconosciute:
+I vettori $\mathbf{w}_i$ sono esattamente le direzioni delle feature discusse nel Capitolo~\ref{sec:04_disentangling_dense_embeddings_with_sparse_autoencoders}. In quel contesto l'embedding era stato scritto come combinazione di direzioni sconosciute:
 \begin{equation}
     \mathbf{x} = \sum_i a_i \, \mathbf{w}_i
 \end{equation}
-lamentando di non conoscere né le direzioni $\mathbf{w}_i$ né le intensità $a_i$. Lo Sparse Autoencoder risolve entrambi i problemi: le direzioni $\mathbf{w}_i$ sono le colonne della matrice $W_d$, apprese durante l'addestramento e quindi note; le intensità $a_i$ corrispondono alle attivazioni $h_i$, calcolate dall'encoder per ogni input.
+con il problema di non conoscere né le direzioni $\mathbf{w}_i$ né le intensità $a_i$. Lo Sparse Autoencoder risolve entrambi i problemi: le direzioni $\mathbf{w}_i$ sono le colonne della matrice $W_d$, apprese durante l'addestramento e quindi note; le intensità $a_i$ corrispondono alle attivazioni $h_i$, calcolate dall'encoder per ogni input.
 \begin{notebox}
 \textbf{La chiave del disentanglement}\\
-Nel Capitolo~\ref{sec:04_disentangling_dense_embeddings_with_sparse_autoencoders} abbiamo identificato due problemi della superposition:
+Nel Capitolo~\ref{sec:04_disentangling_dense_embeddings_with_sparse_autoencoders} sono stati identificati due problemi della superposition:
 \begin{enumerate}
-    \item \textbf{Opacità}: non conosciamo le direzioni $\mathbf{w}_i$ delle feature
-    \item \textbf{Interferenza}: non possiamo recuperare le intensità $a_i$ a causa della non-ortogonalità
+    \item \textbf{Opacità}: non sono note le direzioni $\mathbf{w}_i$ delle feature
+    \item \textbf{Interferenza}: non è possibile recuperare le intensità $a_i$ a causa della non-ortogonalità
 \end{enumerate}
 Lo Sparse Autoencoder affronta entrambi:
 \begin{enumerate}
@@ -297,12 +299,12 @@ Lo Sparse Autoencoder affronta entrambi:
     \item Le intensità $h_i$ sono calcolate dall'encoder, che impara a compensare l'interferenza
 \end{enumerate}
 \end{notebox}
-È istruttivo confrontare questa situazione con un decoder non lineare. Supponiamo di aggiungere una ReLU anche al decoder:
+È istruttivo confrontare questa situazione con un decoder non lineare. Si supponga di aggiungere una ReLU anche al decoder:
 \begin{equation}
     \hat{\mathbf{x}} = \sigma(W_d \mathbf{h} + \mathbf{b}_d)
 \end{equation}
-In questo caso la ricostruzione non sarebbe più una combinazione lineare delle colonne di $W_d$. Le interazioni tra feature diventerebbero opache: il contributo della feature $i$ alla ricostruzione dipenderebbe non solo da $h_i$ e $\mathbf{w}_i$, ma anche da tutte le altre attivazioni e dalla soglia della ReLU. Perderemmo la possibilità di dire ``questa componente della ricostruzione viene dalla feature $i$''.
-La linearità del decoder garantisce invece una proprietà fondamentale: \textit{additività dei contributi}. Se due feature $i$ e $j$ sono attive, i loro contributi alla ricostruzione sono semplicemente sommati:
+In questo caso la ricostruzione non sarebbe più una combinazione lineare delle colonne di $W_d$. Le interazioni tra feature diventerebbero opache: il contributo della feature $i$ alla ricostruzione dipenderebbe non solo da $h_i$ e $\mathbf{w}_i$, ma anche da tutte le altre attivazioni e dalla soglia della ReLU. Si perderebbe la possibilità di affermare ``questa componente della ricostruzione viene dalla feature $i$''.
+La linearità del decoder garantisce invece una proprietà fondamentale: l'\textit{additività dei contributi}. Se due feature $i$ e $j$ sono attive, i loro contributi alla ricostruzione sono semplicemente sommati:
 \begin{equation}
     \hat{\mathbf{x}} = h_i \cdot \mathbf{w}_i + h_j \cdot \mathbf{w}_j + \sum_{k \neq i,j} h_k \cdot \mathbf{w}_k + \mathbf{b}_d
 \end{equation}
@@ -342,12 +344,12 @@ Non c'è interazione nascosta tra $\mathbf{w}_i$ e $\mathbf{w}_j$: ciascuna feat
     \label{fig:decoder_linear_combination}
 \end{figure}
 
-La linearità ha anche un'altra conseguenza importante: ogni colonna $\mathbf{w}_i$ può essere studiata in isolamento. Possiamo chiederci: ``quale direzione nello spazio degli embedding rappresenta la feature $i$?'' e rispondere ispezionando direttamente $\mathbf{w}_i$. Possiamo calcolare la similarità tra due feature confrontando $\mathbf{w}_i$ e $\mathbf{w}_j$. Possiamo persino intervenire sulla rappresentazione, aumentando o diminuendo un'attivazione $h_i$ per ``aggiungere'' o ``rimuovere'' una feature dalla ricostruzione. Nulla di tutto questo sarebbe possibile con un decoder non lineare.
+La linearità ha anche un'altra conseguenza importante: ogni colonna $\mathbf{w}_i$ può essere studiata in isolamento. È possibile chiedersi: ``quale direzione nello spazio degli embedding rappresenta la feature $i$?'' e rispondere ispezionando direttamente $\mathbf{w}_i$. È possibile calcolare la similarità tra due feature confrontando $\mathbf{w}_i$ e $\mathbf{w}_j$. È persino possibile intervenire sulla rappresentazione, aumentando o diminuendo un'attivazione $h_i$ per ``aggiungere'' o ``rimuovere'' una feature dalla ricostruzione. Nulla di tutto questo sarebbe possibile con un decoder non lineare.
 
 \subsubsection{Feature come direzioni nello spazio degli embedding}
 \label{subsubsec:features_as_directions}
-Abbiamo stabilito che le colonne $\mathbf{w}_i$ della matrice del decoder rappresentano le feature apprese dal modello. Ma cosa significa, concretamente, che una feature è una ``direzione nello spazio degli embedding''?
-Consideriamo lo spazio $\mathbb{R}^d$ in cui vivono gli embedding—ad esempio, lo spazio a 768 dimensioni di BERT. Ogni punto di questo spazio corrisponde a un possibile embedding, cioè alla rappresentazione di un testo. Punti vicini rappresentano testi semanticamente simili; punti lontani rappresentano testi dissimili. In questo spazio, una direzione non è semplicemente un punto, ma un \textit{asse lungo cui spostarsi}.
+Si è stabilito che le colonne $\mathbf{w}_i$ della matrice del decoder rappresentano le feature apprese dal modello. Ma cosa significa, concretamente, che una feature è una ``direzione nello spazio degli embedding''?
+Si consideri lo spazio $\mathbb{R}^d$ in cui vivono gli embedding, ad esempio lo spazio a 768 dimensioni di BERT. Ogni punto di questo spazio corrisponde a un possibile embedding, vale a dire alla rappresentazione di un testo. Punti vicini rappresentano testi semanticamente simili; punti lontani rappresentano testi dissimili. In questo spazio, una direzione non è semplicemente un punto, ma un \textit{asse lungo cui spostarsi}.
 Ogni colonna $\mathbf{w}_i \in \mathbb{R}^d$ definisce una di queste direzioni. Muoversi lungo $\mathbf{w}_i$, partendo da un embedding $\mathbf{x}$, significa aggiungere o intensificare un certo aspetto semantico. Se $\mathbf{w}_{42}$ rappresenta il concetto di ``febbre'', allora:
 \begin{equation}
     \mathbf{x}' = \mathbf{x} + \alpha \cdot \mathbf{w}_{42}
@@ -393,9 +395,9 @@ Questa normalizzazione ha due scopi. Il primo è separare il ruolo della direzio
     \label{fig:features_as_directions}
 \end{figure}
 
-È importante osservare che le direzioni $\mathbf{w}_i$ non sono, in generale, ortogonali tra loro. Questo potrebbe sembrare un fallimento: nel Capitolo~\ref{sec:04_disentangling_dense_embeddings_with_sparse_autoencoders} abbiamo presentato l'ortogonalità come condizione ideale per il disentanglement. Ma l'ortogonalità perfetta è impossibile quando il numero di feature $n$ supera la dimensionalità dello spazio $d$: in $\mathbb{R}^d$ possono esistere al massimo $d$ vettori mutuamente ortogonali. Con $n = 3072$ feature e $d = 768$ dimensioni, la non-ortogonalità è una necessità matematica.
-Ciò che lo Sparse Autoencoder garantisce non è l'ortogonalità delle direzioni, ma la loro \textit{esplicitezza}. A differenza della superposition originaria—dove le direzioni erano sconosciute e mescolate—qui ogni $\mathbf{w}_i$ è un vettore ispezionabile, memorizzato come colonna della matrice $W_d$. Possiamo misurare il prodotto scalare $\mathbf{w}_i^T \mathbf{w}_j$ per quantificare la sovrapposizione tra due feature. Possiamo visualizzare le direzioni, confrontarle, raggrupparle. L'interferenza geometrica non è eliminata, ma è resa trasparente.
-Questa trasparenza apre la strada all'interpretazione. Se $\mathbf{w}_i$ è una direzione nello spazio degli embedding, possiamo chiederci: quali testi producono embedding allineati con questa direzione? Ovvero: per quali input l'attivazione $h_i$ è elevata? La risposta a questa domanda—trovare i testi che ``accendono'' una feature—è il primo passo per assegnare un significato semantico alle direzioni apprese. Vedremo nella Sezione~\ref{subsec:interpretability} come questo processo possa essere automatizzato utilizzando un modello linguistico come interprete.
+È importante osservare che le direzioni $\mathbf{w}_i$ non sono, in generale, ortogonali tra loro. Questo potrebbe sembrare un fallimento: nel Capitolo~\ref{sec:04_disentangling_dense_embeddings_with_sparse_autoencoders} l'ortogonalità è stata presentata come condizione ideale per il disentanglement. Ma l'ortogonalità perfetta è impossibile quando il numero di feature $n$ supera la dimensionalità dello spazio $d$: in $\mathbb{R}^d$ possono esistere al massimo $d$ vettori mutuamente ortogonali. Con $n = 3072$ feature e $d = 768$ dimensioni, la non-ortogonalità è una necessità matematica.
+Ciò che lo Sparse Autoencoder garantisce non è l'ortogonalità delle direzioni, ma la loro \textit{esplicitezza}. A differenza della superposition originaria, dove le direzioni erano sconosciute e mescolate, qui ogni $\mathbf{w}_i$ è un vettore ispezionabile, memorizzato come colonna della matrice $W_d$. È possibile misurare il prodotto scalare $\mathbf{w}_i^T \mathbf{w}_j$ per quantificare la sovrapposizione tra due feature. È possibile visualizzare le direzioni, confrontarle, raggrupparle. L'interferenza geometrica non è eliminata, ma è resa trasparente.
+Questa trasparenza apre la strada all'interpretazione. Se $\mathbf{w}_i$ è una direzione nello spazio degli embedding, è lecito chiedersi: quali testi producono embedding allineati con questa direzione? In altri termini: per quali input l'attivazione $h_i$ è elevata? La risposta a questa domanda, vale a dire trovare i testi che ``accendono'' una feature, è il primo passo per assegnare un significato semantico alle direzioni apprese. Nel Paragrafo~\ref{subsec:interpretability} sarà illustrato come questo processo possa essere automatizzato utilizzando un modello linguistico come interprete.
 \begin{notebox}
 \textbf{Riepilogo: l'architettura dello Sparse Autoencoder}\\
 Lo Sparse Autoencoder trasforma un embedding denso $\mathbf{x} \in \mathbb{R}^d$ in una rappresentazione sparsa $\mathbf{h} \in \mathbb{R}^n$ con $n > d$:
@@ -407,41 +409,54 @@ Lo Sparse Autoencoder trasforma un embedding denso $\mathbf{x} \in \mathbb{R}^d$
 \end{itemize}
 La linearità del decoder è la chiave: garantisce che ogni feature contribuisca in modo indipendente e trasparente alla ricostruzione.
 \end{notebox}
-
 \subsection{Funzione di perdita e addestramento}
 \label{subsec:loss_function}
 
-L'architettura dello Sparse Autoencoder—encoder non lineare, spazio overcomplete, decoder lineare—definisce la struttura del modello. Ma è la funzione di perdita a determinare \textit{cosa} il modello apprende. In questa sezione esaminiamo i tre componenti della loss function e il loro ruolo nel produrre rappresentazioni sparse e interpretabili.
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\textwidth]{pictures/cap5/1_load_ds.png}
+    \caption{L'utente può caricare un dataset di dati testuali e scegliere quale modello di embedding denso utilizzare per la fase di pre-encoding. I dati testuali vengono salvati nel database MySQL di PRISMA con il relativo vettore $\mathbf{x}$ di embedding una volta generato.}
+    \label{fig:prisma_load_ds}
+\end{figure}
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\textwidth]{pictures/cap5/2_prepare_experiment.png}
+    \caption{Una volta terminata la generazione del dataset di embedding, l'utente può selezionarlo, configurare gli iperparametri dell'addestramento dello Sparse Autoencoder e monitorarne il progresso in tempo reale.}
+    \label{fig:prisma_prepare_experiment}
+\end{figure}
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\textwidth]{pictures/cap5/training_2.png}
+    \caption{Schermata che mostra i risultati dell'addestramento e la matrice dello spazio latente $H$ con attivazioni sparse.}
+    \label{fig:prisma_training_results}
+\end{figure}
+L'architettura dello Sparse Autoencoder, vale a dire encoder non lineare, spazio overcomplete e decoder lineare, definisce la struttura del modello. Ma è la funzione di perdita a determinare \textit{cosa} il modello apprende. In questo paragrafo sono esaminati i tre componenti della loss function e il loro ruolo nel produrre rappresentazioni sparse e interpretabili.
 
 \subsubsection{La funzione di perdita complessiva}
 \label{subsubsec:loss_overview}
-
-L'obiettivo dell'addestramento è duplice: il modello deve ricostruire fedelmente gli embedding originali, ma deve farlo utilizzando rappresentazioni sparse. Questi due obiettivi sono potenzialmente in conflitto—una ricostruzione perfetta potrebbe richiedere molte feature attive simultaneamente—e la funzione di perdita deve bilanciarli.
-
-Seguendo O'Neill et al.~\parencite{oneill2024disentangling}, la loss complessiva combina tre termini:
+L'obiettivo dell'addestramento è duplice: il modello deve ricostruire fedelmente gli embedding originali, ma deve farlo utilizzando rappresentazioni sparse. Questi due obiettivi sono potenzialmente in conflitto, poiché una ricostruzione perfetta potrebbe richiedere molte feature attive simultaneamente, e la funzione di perdita deve bilanciarli.
+Seguendo il formalismo di~\parencite{oneill2024disentangling}, la loss complessiva combina tre termini:
 \begin{equation}
     \mathcal{L} = \mathcal{L}_{\text{rec}} + \lambda \mathcal{L}_{\text{sparse}}(\mathbf{h}) + \alpha \mathcal{L}_{\text{aux}}(\mathbf{x}, \hat{\mathbf{x}})
     \label{eq:total_loss}
 \end{equation}
 dove $\lambda > 0$ e $\alpha > 0$ sono iperparametri che controllano il peso relativo di ciascun termine.
-
 Il primo termine è la \textbf{perdita di ricostruzione}, che misura quanto bene il decoder riesce a ricostruire l'input originale:
 \begin{equation}
     \mathcal{L}_{\text{rec}} = \frac{1}{d} \|\mathbf{x} - \hat{\mathbf{x}}\|_2^2
     \label{eq:reconstruction_loss}
 \end{equation}
 Si tratta del Mean Squared Error (MSE) tra l'embedding originale $\mathbf{x}$ e la sua ricostruzione $\hat{\mathbf{x}}$, normalizzato per la dimensionalità $d$. Minimizzare questo termine spinge il modello a preservare l'informazione contenuta nell'embedding: una ricostruzione fedele implica che le feature estratte catturano gli aspetti rilevanti dell'input.
-
 Il secondo termine è il \textbf{vincolo di sparsità}, che penalizza le rappresentazioni con troppe attivazioni non nulle:
 \begin{equation}
     \mathcal{L}_{\text{sparse}}(\mathbf{h})
 \end{equation}
-La forma esatta di questo termine può variare; nella prossima sezione vedremo l'approccio Top-K adottato da O'Neill et al., che differisce dalla classica regolarizzazione $L_1$.
-Il terzo termine è la \textbf{perdita ausiliaria}, introdotta per risolvere un problema pratico dell'addestramento—il fenomeno dei \textit{dead latents}:
+La forma esatta di questo termine può variare; nel prossimo paragrafo sarà presentato l'approccio Top-K adottato in~\parencite{oneill2024disentangling}, che differisce dalla classica regolarizzazione $L_1$.
+Il terzo termine è la \textbf{perdita ausiliaria}, introdotta per risolvere un problema pratico dell'addestramento, vale a dire il fenomeno dei \textit{dead latents}:
 \begin{equation}
     \mathcal{L}_{\text{aux}}(\mathbf{x}, \hat{\mathbf{x}})
 \end{equation}
-Dedicheremo la Sezione~\ref{subsubsec:auxiliary_loss} a questo componente. Il bilanciamento tra questi termini è cruciale. Se $\lambda$ è troppo basso, il modello potrebbe attivare molte feature per ogni input, perdendo il vantaggio della sparsità. Se $\lambda$ è troppo alto, il modello potrebbe sacrificare la qualità della ricostruzione pur di mantenere poche attivazioni. O'Neill et al. osservano che, con l'approccio Top-K, il coefficiente $\lambda$ diventa meno critico perché la sparsità è imposta come vincolo rigido piuttosto che come penalità morbida. Il coefficiente $\alpha$ della perdita ausiliaria è tipicamente fissato a $1/32$, un valore che bilancia l'effetto di recupero dei dead latents senza interferire eccessivamente con l'obiettivo principale.
+Questo componente sarà approfondito nel Paragrafo~\ref{subsubsec:auxiliary_loss}. Il bilanciamento tra questi termini è cruciale. Se $\lambda$ è troppo basso, il modello potrebbe attivare molte feature per ogni input, perdendo il vantaggio della sparsità. Se $\lambda$ è troppo alto, il modello potrebbe sacrificare la qualità della ricostruzione pur di mantenere poche attivazioni. In~\parencite{oneill2024disentangling} si osserva che, con l'approccio Top-K, il coefficiente $\lambda$ diventa meno critico perché la sparsità è imposta come vincolo rigido piuttosto che come penalità morbida. Il coefficiente $\alpha$ della perdita ausiliaria è tipicamente fissato a $1/32$, un valore che bilancia l'effetto di recupero dei dead latents senza interferire eccessivamente con l'obiettivo principale.
 \subsubsection{Il vincolo di sparsità Top-K}
 \label{subsubsec:topk_sparsity}
 
@@ -450,7 +465,7 @@ L'approccio tradizionale per indurre sparsità in un autoencoder è la regolariz
     \mathcal{L}_{\text{sparse}}^{L_1}(\mathbf{h}) = \sum_{i=1}^{n} |h_i|
 \end{equation}
 Questo termine penalizza le attivazioni non nulle, spingendo il modello a utilizzare poche feature. Tuttavia, la regolarizzazione $L_1$ presenta un problema noto come \textit{shrinkage}: per ridurre la penalità, il modello tende a sottostimare sistematicamente le attivazioni, producendo valori $h_i$ più bassi di quelli che sarebbero ottimali per la ricostruzione~\parencite{oneill2024disentangling}. Il risultato è una rappresentazione sì sparsa, ma anche meno fedele.
-O'Neill et al. adottano un approccio diverso: il vincolo \textbf{Top-K} (o \textit{k-sparse})~\parencite{makhzani2013ksparse}. Invece di penalizzare le attivazioni con un termine morbido, si impone un vincolo rigido: per ogni input, solo le $k$ attivazioni più grandi vengono mantenute, mentre tutte le altre sono forzate a zero.
+In~\parencite{oneill2024disentangling} viene adottato un approccio diverso: il vincolo \textbf{Top-K} (o \textit{k-sparse})~\parencite{makhzani2013ksparse}. Invece di penalizzare le attivazioni con un termine morbido, viene imposto un vincolo rigido: per ogni input, solo le $k$ attivazioni più grandi vengono mantenute, mentre tutte le altre sono forzate a zero.
 Formalmente, sia $\mathbf{z} = W_e \mathbf{x} + \mathbf{b}_e$ il vettore delle pre-attivazioni. Il vincolo Top-K opera in due passi:
 \begin{enumerate}
     \item Si identificano gli indici delle $k$ componenti di $\mathbf{z}$ con valore più alto
@@ -535,20 +550,39 @@ dove $\sigma(\cdot)$ è la ReLU.
     \caption{Il vincolo Top-K. A sinistra: le pre-attivazioni $\mathbf{z}$ calcolate dall'encoder. Le tre componenti con valore più alto sono evidenziate in blu. A destra: le attivazioni finali $\mathbf{h}$ dopo l'applicazione del vincolo Top-K con $k=3$. Solo le componenti selezionate (in verde) mantengono il loro valore; tutte le altre sono forzate a zero.}
     \label{fig:topk_mechanism}
 \end{figure}
-
+\begin{figure}[htbp]
+    \centering
+    \begin{subfigure}[b]{\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{pictures/cap5/8_vector_sparse_unsorted.png}
+        \caption{Rappresentazione sparsa delle attivazioni associate a un singolo documento in input. Le attivazioni corrispondono a concetti.}
+        \label{fig:vector_unsorted}
+    \end{subfigure}
+    
+    \vspace{0.5cm}
+    
+    \begin{subfigure}[b]{\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{pictures/cap5/6_vector_sparse_sorted.png}
+        \caption{Vettore riordinato per valori decrescenti.}
+        \label{fig:vector_sorted}
+    \end{subfigure}
+    \caption{Rappresentazione latente delle feature attivate da un documento: confronto tra vettore originale e riordinato per valori decrescenti.}
+    \label{fig:vector_comparison}
+\end{figure}
 Il vantaggio del Top-K rispetto alla regolarizzazione $L_1$ è duplice. 
 
 Il primo vantaggio è l'assenza di shrinkage. Le $k$ attivazioni selezionate mantengono il loro valore originale $\sigma(z_i)$, senza alcuna penalizzazione. Il modello può quindi apprendere attivazioni di intensità appropriata senza il compromesso imposto dalla regolarizzazione.
 
 Il secondo vantaggio è il controllo diretto sulla sparsità. Con $L_1$, il livello di sparsità dipende dal coefficiente $\lambda$ e deve essere calibrato empiricamente. Con Top-K, la sparsità è deterministica: esattamente $k$ feature attive per input, né più né meno. Questo rende il comportamento del modello più prevedibile e i risultati più riproducibili.
 
-La scelta del valore di $k$ è un iperparametro cruciale. Valori tipici variano tra 16 e 128, a seconda della complessità del dominio e della granularità desiderata~\parencite{oneill2024disentangling}. Un $k$ più basso produce rappresentazioni più sparse ma potenzialmente meno accurate; un $k$ più alto permette ricostruzioni migliori ma con meno separazione tra le feature. O'Neill et al. esplorano tre configurazioni principali:
+La scelta del valore di $k$ è un iperparametro cruciale. Valori tipici variano tra 16 e 128, a seconda della complessità del dominio e della granularità desiderata~\parencite{oneill2024disentangling}. Un $k$ più basso produce rappresentazioni più sparse ma potenzialmente meno accurate; un $k$ più alto permette ricostruzioni migliori ma con meno separazione tra le feature. In~\parencite{oneill2024disentangling} vengono esplorate tre configurazioni principali:
 \begin{itemize}
     \item \textbf{SAE16}: $k = 16$ attivazioni, $n = 2d = 3072$ feature totali
     \item \textbf{SAE32}: $k = 32$ attivazioni, $n = 4d = 6144$ feature totali
     \item \textbf{SAE64}: $k = 64$ attivazioni, $n = 6d = 9216$ feature totali
 \end{itemize}
-All'aumentare di $k$ e $n$, le feature apprese tendono a diventare più granulari e specifiche—un fenomeno che esploreremo nella Sezione~\ref{subsec:feature_splitting}.
+All'aumentare di $k$ e $n$, le feature apprese tendono a diventare più granulari e specifiche, un fenomeno che sarà approfondito nel Paragrafo~\ref{subsec:feature_splitting}.
 
 
 \subsubsection{Auxiliary loss e il problema dei dead latents}
@@ -556,7 +590,7 @@ All'aumentare di $k$ e $n$, le feature apprese tendono a diventare più granular
 
 Durante l'addestramento di uno Sparse Autoencoder può emergere un problema insidioso: alcune feature smettono di attivarsi completamente. Il vincolo Top-K seleziona, per ogni input, solo le $k$ attivazioni più alte; se una feature produce sistematicamente valori bassi, non verrà mai selezionata e i suoi parametri smetteranno di ricevere gradienti. Senza gradienti, la feature non può migliorare; senza miglioramento, continuerà a produrre valori bassi. Si innesca un circolo vizioso che porta la feature a ``morire''.
 
-Queste feature inutilizzate sono chiamate \textbf{dead latents}. O'Neill et al.~\parencite{oneill2024disentangling} definiscono operativamente un latent come ``morto'' se non si è attivato per un'intera epoca di addestramento. Il problema non è solo teorico: nei primi esperimenti con SAE a $k=16$, gli autori osservano che una frazione significativa delle feature può diventare inattiva durante il training (Figura~\ref{fig:dead_latents}).
+Queste feature inutilizzate sono chiamate \textbf{dead latents}. In~\parencite{oneill2024disentangling} viene definito operativamente un latent come ``morto'' se non si è attivato per un'intera epoca di addestramento. Il problema non è solo teorico: nei primi esperimenti con SAE a $k=16$, gli autori osservano che una frazione significativa delle feature può diventare inattiva durante il training (Figura~\ref{fig:dead_latents}).
 
 \begin{figure}[htbp]
     \centering
@@ -599,18 +633,18 @@ Queste feature inutilizzate sono chiamate \textbf{dead latents}. O'Neill et al.~
         \node[right, font=\scriptsize] at (7, 4) {con $\mathcal{L}_{\text{aux}}$};
         
     \end{tikzpicture}
-    \caption{Evoluzione dei dead latents durante il training (illustrazione qualitativa basata sui risultati di O'Neill et al.). Senza la perdita ausiliaria, una frazione significativa di feature diventa permanentemente inattiva. Con la perdita ausiliaria, i dead latents vengono progressivamente ``rianimati'' fino a scomparire.}
+    \caption{Evoluzione dei dead latents durante il training (illustrazione qualitativa basata sui risultati in~\parencite{oneill2024disentangling}). Senza la perdita ausiliaria, una frazione significativa di feature diventa permanentemente inattiva. Con la perdita ausiliaria, i dead latents vengono progressivamente ``rianimati'' fino a scomparire.}
     \label{fig:dead_latents}
 \end{figure}
-I dead latents rappresentano uno spreco di capacità. Se il modello ha $n = 3072$ feature ma 500 sono morte, la capacità effettiva si riduce a 2572 feature—vanificando parte del vantaggio dell'overcompletezza. Peggio ancora, le feature che sopravvivono potrebbero essere costrette a rappresentare più concetti di quanti ne potrebbero gestire, reintroducendo una forma di polisemantictà.
-Per contrastare questo fenomeno, O'Neill et al. introducono una \textbf{perdita ausiliaria} ispirata alla tecnica dei ``ghost grads''~\parencite{jermyn2023ghostgrads}. L'idea è semplice: se una feature è morta, non riceve gradienti dalla loss principale perché non contribuisce alla ricostruzione. Ma possiamo \textit{forzarla} a contribuire chiedendole di ricostruire l'\textit{errore} del modello.
+I dead latents rappresentano uno spreco di capacità. Se il modello ha $n = 3072$ feature ma 500 sono morte, la capacità effettiva si riduce a 2572 feature, vanificando parte del vantaggio dell'overcompletezza. Peggio ancora, le feature che sopravvivono potrebbero essere costrette a rappresentare più concetti di quanti ne potrebbero gestire, reintroducendo una forma di polisemanticità.
+Per contrastare questo fenomeno, in~\parencite{oneill2024disentangling} viene introdotta una \textbf{perdita ausiliaria} ispirata alla tecnica dei ``ghost grads''~\parencite{jermyn2023ghostgrads}. L'idea è semplice: se una feature è morta, non riceve gradienti dalla loss principale perché non contribuisce alla ricostruzione. È possibile tuttavia \textit{forzarla} a contribuire chiedendole di ricostruire l'\textit{errore} del modello.
 Formalmente, sia $\mathbf{e} = \mathbf{x} - \hat{\mathbf{x}}$ l'errore di ricostruzione del modello principale. La perdita ausiliaria chiede ai dead latents di modellare questo errore:
 \begin{equation}
     \mathcal{L}_{\text{aux}}(\mathbf{x}, \hat{\mathbf{x}}) = \|\mathbf{e} - \hat{\mathbf{e}}\|_2^2
     \label{eq:auxiliary_loss}
 \end{equation}
 dove $\hat{\mathbf{e}} = W_d \mathbf{z}$ è la ricostruzione dell'errore ottenuta usando solo i dead latents. Il vettore $\mathbf{z}$ è una rappresentazione sparsa che utilizza esclusivamente le $k_{\text{aux}}$ feature attualmente inattive con le pre-attivazioni più alte.
-Il meccanismo funziona così: le feature ``vive'' ricostruiscono $\mathbf{x}$ producendo $\hat{\mathbf{x}}$; le feature ``morte'' cercano di ricostruire l'errore residuo $\mathbf{e}$. Se un dead latent riesce a catturare parte dell'errore, la sua direzione $\mathbf{w}_i$ sta evidentemente codificando informazione utile che le feature attive non stanno rappresentando. Il gradiente della perdita ausiliaria ``risveglia'' questo latent, dandogli la possibilità di competere nuovamente per essere selezionato dal Top-K.
+Il meccanismo funziona nel modo seguente: le feature ``vive'' ricostruiscono $\mathbf{x}$ producendo $\hat{\mathbf{x}}$; le feature ``morte'' cercano di ricostruire l'errore residuo $\mathbf{e}$. Se un dead latent riesce a catturare parte dell'errore, la sua direzione $\mathbf{w}_i$ sta evidentemente codificando informazione utile che le feature attive non stanno rappresentando. Il gradiente della perdita ausiliaria ``risveglia'' questo latent, dandogli la possibilità di competere nuovamente per essere selezionato dal Top-K.
 \begin{notebox}
 \textbf{Il meccanismo della perdita ausiliaria}\\
 \begin{enumerate}
@@ -620,19 +654,19 @@ Il meccanismo funziona così: le feature ``vive'' ricostruiscono $\mathbf{x}$ pr
     \item Se ci riescono, ricevono gradienti e possono ``tornare in vita''
 \end{enumerate}
 \end{notebox}
-Il parametro $k_{\text{aux}}$ controlla quanti dead latents vengono coinvolti in ogni step. O'Neill et al. utilizzano tipicamente $k_{\text{aux}} = 2k$: il doppio dei latenti attivi nel modello principale. Il coefficiente $\alpha$ nella loss complessiva (Equazione~\ref{eq:total_loss}) è fissato a $1/32$, un valore sufficientemente basso da non interferire con l'obiettivo principale di ricostruzione, ma abbastanza alto da garantire il recupero dei dead latents nel corso dell'addestramento.
-L'efficacia di questa tecnica è notevole. O'Neill et al. riportano che, alla fine del training, tutti i modelli presentano zero dead latents—tutte le $n$ feature hanno imparato a contribuire alla rappresentazione. Questo risultato è particolarmente importante per l'interpretabilità: significa che l'intera capacità del modello è effettivamente utilizzata, e ogni direzione $\mathbf{w}_i$ nel decoder rappresenta potenzialmente un concetto distinto.
+Il parametro $k_{\text{aux}}$ controlla quanti dead latents vengono coinvolti in ogni step. In~\parencite{oneill2024disentangling} viene utilizzato tipicamente $k_{\text{aux}} = 2k$, vale a dire il doppio dei latenti attivi nel modello principale. Il coefficiente $\alpha$ nella loss complessiva (come in Eq.~\ref{eq:total_loss}) è fissato a $1/32$, un valore sufficientemente basso da non interferire con l'obiettivo principale di ricostruzione, ma abbastanza alto da garantire il recupero dei dead latents nel corso dell'addestramento.
+L'efficacia di questa tecnica è notevole. In~\parencite{oneill2024disentangling} viene riportato che, alla fine del training, tutti i modelli presentano zero dead latents: tutte le $n$ feature hanno imparato a contribuire alla rappresentazione. Questo risultato è particolarmente importante per l'interpretabilità: significa che l'intera capacità del modello è effettivamente utilizzata, e ogni direzione $\mathbf{w}_i$ nel decoder rappresenta potenzialmente un concetto distinto.
 \subsection{Interpretabilità automatica delle feature}
 \label{subsec:interpretability}
-Lo Sparse Autoencoder produce una rappresentazione in cui ogni feature corrisponde a una direzione $\mathbf{w}_i$ nello spazio degli embedding e a un'attivazione $h_i$ che ne indica l'intensità. Ma una direzione geometrica, di per sé, non è interpretabile: per rendere le feature comprensibili agli esseri umani, dobbiamo associare a ciascuna un'etichetta semantica—un nome che descriva il concetto che quella feature cattura.
-Un approccio manuale sarebbe impraticabile. Con migliaia di feature ($n = 3072$ o più), ispezionare una per una i testi che le attivano richiederebbe settimane di lavoro. O'Neill et al.~\parencite{oneill2024disentangling} propongono invece un approccio automatizzato: utilizzare un Large Language Model come \textbf{interprete} delle feature.
+Lo Sparse Autoencoder produce una rappresentazione in cui ogni feature corrisponde a una direzione $\mathbf{w}_i$ nello spazio degli embedding e a un'attivazione $h_i$ che ne indica l'intensità. Ma una direzione geometrica, di per sé, non è interpretabile: per rendere le feature comprensibili agli esseri umani, è necessario associare a ciascuna un'etichetta semantica, vale a dire un nome che descriva il concetto che quella feature cattura.
+Un approccio manuale sarebbe impraticabile. Con migliaia di feature ($n = 3072$ o più), ispezionare una per una i testi che le attivano richiederebbe settimane di lavoro. In~\parencite{oneill2024disentangling} viene proposto invece un approccio automatizzato: utilizzare un Large Language Model come \textbf{interprete} delle feature.
 \subsubsection{L'Interpreter LLM}
 \label{subsubsec:interpreter}
-L'intuizione è semplice. Se una feature cattura un concetto semantico coerente, i testi che la attivano fortemente dovrebbero condividere qualcosa—un tema, un argomento, una proprietà stilistica. Un modello linguistico, esaminando questi testi, dovrebbe essere in grado di identificare il denominatore comune.
+L'intuizione è semplice. Se una feature cattura un concetto semantico coerente, i testi che la attivano fortemente dovrebbero condividere qualcosa, vale a dire un tema, un argomento, una proprietà stilistica. Un modello linguistico, esaminando questi testi, dovrebbe essere in grado di identificare il denominatore comune.
 Il processo di interpretazione si articola in tre passi:
-\textbf{Passo 1: Identificare i testi attivanti.} Per ogni feature $i$, si scorre l'intero corpus di documenti e si calcolano le attivazioni $h_i$ prodotte dall'encoder. Si selezionano i $k$ documenti con le attivazioni più alte—i testi che ``accendono'' maggiormente quella feature. Tipicamente $k = 5$.
+\textbf{Passo 1: Identificare i testi attivanti.} Per ogni feature $i$, si scorre l'intero corpus di documenti e si calcolano le attivazioni $h_i$ prodotte dall'encoder. Si selezionano i $k$ documenti con le attivazioni più alte, vale a dire i testi che ``accendono'' maggiormente quella feature. Tipicamente $k = 5$.
 \textbf{Passo 2: Identificare i contro-esempi.} Si selezionano anche alcuni documenti che \textit{non} attivano la feature ($h_i = 0$). Questi contro-esempi aiutano l'interprete a discriminare: il concetto cercato deve essere presente nei testi attivanti e assente nei contro-esempi.
-\textbf{Passo 3: Interrogare l'LLM.} I testi attivanti e i contro-esempi vengono forniti a un modello linguistico insieme a un prompt che chiede di identificare il tema comune. L'LLM restituisce un'etichetta breve (1-8 parole) che descrive la feature.
+\textbf{Passo 3: Interrogare l'LLM.} I testi attivanti e i contro-esempi vengono forniti a un modello linguistico insieme a un prompt che chiede di identificare il tema comune. L'LLM restituisce un'etichetta breve (1--8 parole) che descrive la feature.
 
 \begin{figure}[htbp]
     \centering
@@ -678,24 +712,24 @@ Il processo di interpretazione si articola in tre passi:
         % Output
         \node[draw, rectangle, minimum width=4cm, minimum height=1.2cm, fill=yellow!20, rounded corners] (label) at (0, -11) {};
         \node[font=\small, align=center] at (0, -10.85) {``febbre alta''};
-        \node[font=\scriptsize, gray] at (0, -11.35) {etichetta (1-8 parole)};
+        \node[font=\scriptsize, gray] at (0, -11.35) {etichetta (1--8 parole)};
         
     \end{tikzpicture}
     \caption{Il processo di interpretazione automatica. Per ogni feature, si identificano i testi che la attivano maggiormente e quelli che non la attivano affatto. Un LLM esamina entrambi gli insiemi e produce un'etichetta che descrive il concetto catturato dalla feature.}
     \label{fig:interpreter_process}
 \end{figure}
 
-Il prompt fornito all'interprete è progettato con cura. O'Neill et al. istruiscono il modello a comportarsi come un ``meticoloso ricercatore'' che deve scoprire quale comportamento attiva un certo neurone. Il prompt richiede di:
+Il prompt fornito all'interprete è progettato con cura. In~\parencite{oneill2024disentangling} il modello viene istruito a comportarsi come un ``meticoloso ricercatore'' che deve scoprire quale comportamento attiva un certo neurone. Il prompt richiede di:
 \begin{enumerate}
     \item Elencare i potenziali temi comuni tra i testi attivanti, a diversi livelli di granularità
     \item Escludere i temi presenti anche nei contro-esempi
     \item Applicare il rasoio di Occam: scegliere la spiegazione più semplice compatibile con i dati
-    \item Formulare l'etichetta finale in 1-8 parole
+    \item Formulare l'etichetta finale in 1--8 parole
 \end{enumerate}
 Il riferimento al rasoio di Occam è particolarmente importante. Senza questa indicazione, l'interprete potrebbe produrre etichette troppo specifiche (che catturano solo un sottoinsieme dei testi attivanti) o troppo generiche (che non discriminano dai contro-esempi). La richiesta di semplicità guida verso etichette al giusto livello di astrazione.
 \subsubsection{Implementazione in PRISMA}
 \label{subsubsec:prisma_interpreter}
-In PRISMA, l'interpretazione delle feature è implementata attraverso l'integrazione con Ollama, un framework per l'esecuzione locale di modelli linguistici. Questa scelta presenta vantaggi significativi: non richiede connessione a servizi cloud, garantisce la privacy dei dati (particolarmente importante nel contesto medico), e permette di processare grandi volumi di feature senza costi di API.
+In PRISMA, l'interpretazione delle feature è implementata attraverso l'integrazione con Ollama\footnote{Ollama è un framework open-source per l'esecuzione locale di modelli linguistici di grandi dimensioni, che consente di utilizzare LLM senza dipendere da servizi cloud.}, un framework per l'esecuzione locale di modelli linguistici. Questa scelta presenta vantaggi significativi: non richiede connessione a servizi cloud, garantisce la privacy dei dati (particolarmente importante nel contesto medico), e permette di processare grandi volumi di feature senza costi di API.
 Il processo segue fedelmente lo schema descritto sopra. Per ogni feature del SAE addestrato:
 \begin{enumerate}
     \item Il modulo \texttt{explorer} scansiona tutti i documenti del corpus
@@ -706,11 +740,11 @@ Il processo segue fedelmente lo schema descritto sopra. Per ogni feature del SAE
     \item Memorizza l'etichetta risultante nel database
 \end{enumerate}
 
-Il prompt utilizzato in PRISMA è adattato al dominio medico-pediatrico. L'LLM viene istruito a cercare concetti clinici specifici—sintomi, diagnosi, trattamenti, fasce d'età—piuttosto che temi generici. Questa specializzazione migliora la qualità delle etichette nel dominio di applicazione.
+Il prompt utilizzato in PRISMA è adattato al dominio medico-pediatrico. L'LLM viene istruito a cercare concetti clinici specifici, come sintomi, diagnosi, trattamenti e fasce d'età, piuttosto che temi generici. Questa specializzazione migliora la qualità delle etichette nel dominio di applicazione.
 
 \begin{notebox}
 \textbf{Esempio di interpretazione}\\
-Supponiamo che una feature si attivi fortemente sui seguenti testi:
+Si supponga che una feature si attivi fortemente sui seguenti testi:
 \begin{itemize}
     \item ``Paziente presenta temperatura corporea 39.2°C''
     \item ``Febbre persistente da tre giorni, non responsiva a paracetamolo''
@@ -723,20 +757,20 @@ E non si attivi su:
 \end{itemize}
 L'interprete, confrontando i due insiemi, identificherebbe il tema comune e produrrebbe l'etichetta: ``febbre / iperpiressia''.
 \end{notebox}
-È importante sottolineare i limiti di questo approccio. L'interpretazione automatica è un'euristica, non una dimostrazione formale che la feature catturi esattamente il concetto indicato dall'etichetta. Alcune feature potrebbero essere polisemantiche (catturare più concetti correlati), altre potrebbero essere difficili da descrivere in poche parole. O'Neill et al. propongono un secondo passo—un \textit{Predictor} LLM che valida le etichette predicendo le attivazioni su testi unseen—ma questa validazione formale esula dagli scopi dell'implementazione attuale di PRISMA. Le etichette vanno quindi intese come ipotesi interpretative da verificare qualitativamente, non come verità assolute.
+È importante sottolineare i limiti di questo approccio. L'interpretazione automatica è un'euristica, non una dimostrazione formale che la feature catturi esattamente il concetto indicato dall'etichetta. Alcune feature potrebbero essere polisemantiche (catturare più concetti correlati), altre potrebbero essere difficili da descrivere in poche parole. In~\parencite{oneill2024disentangling} viene proposto un secondo passo, un \textit{Predictor} LLM che valida le etichette predicendo le attivazioni su testi unseen, ma questa validazione formale esula dagli scopi dell'implementazione attuale di PRISMA. Le etichette vanno quindi intese come ipotesi interpretative da verificare qualitativamente, non come verità assolute.
 \subsection{Analisi della struttura delle feature}
 \label{subsec:feature_analysis}
-Le feature apprese da uno Sparse Autoencoder non sono entità isolate. L'analisi empirica rivela che si organizzano in strutture ricche: alcune feature tendono ad attivarsi insieme (\textit{feature families}), altre emergono come specializzazioni di feature più generali al crescere della capacità del modello (\textit{feature splitting}). Per studiare queste strutture in modo rigoroso, introduciamo un insieme di matrici che catturano diversi aspetti del comportamento delle feature.
+Le feature apprese da uno Sparse Autoencoder non sono entità isolate. L'analisi empirica rivela che si organizzano in strutture ricche: alcune feature tendono ad attivarsi insieme (\textit{feature families}), altre emergono come specializzazioni di feature più generali al crescere della capacità del modello (\textit{feature splitting}). Per studiare queste strutture in modo rigoroso, è necessario introdurre un insieme di matrici che catturano diversi aspetti del comportamento delle feature.
 \subsubsection{Notazione e matrici fondamentali}
 \label{subsubsec:notation_matrices}
-Sia $N$ il numero di documenti nel corpus e $n$ il numero di feature dello Sparse Autoencoder. Quando confrontiamo SAE di dimensioni diverse, indicheremo con $n_1$ e $n_2$ i rispettivi numeri di feature.
+Sia $N$ il numero di documenti nel corpus e $n$ il numero di feature dello Sparse Autoencoder. Quando si confrontano SAE di dimensioni diverse, si indicheranno con $n_1$ e $n_2$ i rispettivi numeri di feature.
 \paragraph{Matrice delle attivazioni.} La \textbf{matrice delle attivazioni} $H \in \mathbb{R}^{N \times n}$ raccoglie le attivazioni di tutte le feature su tutti i documenti:
 \begin{equation}
     H_{ki} = h_{k,i} = \left[ f_\theta(\mathbf{x}_k) \right]_i
     \label{eq:activation_matrix}
 \end{equation}
 dove $h_{k,i}$ è l'attivazione della feature $i$ sul documento $k$, ottenuta passando l'embedding $\mathbf{x}_k$ attraverso l'encoder $f_\theta$. Ogni riga di $H$ è il vettore latente sparso di un documento; ogni colonna rappresenta il pattern di attivazione di una feature sull'intero corpus.
-Grazie al vincolo Top-K, la matrice $H$ è intrinsecamente sparsa: per ogni riga, al massimo $k$ elementi sono non nulli. Seguendo O'Neill et al.~\parencite{oneill2024disentangling}, utilizziamo anche la notazione $B \equiv H$ quando vogliamo enfatizzare che stiamo considerando i \textit{valori} delle attivazioni (non solo la loro presenza).
+Grazie al vincolo Top-K, la matrice $H$ è intrinsecamente sparsa: per ogni riga, al massimo $k$ elementi sono non nulli. Seguendo il formalismo di~\parencite{oneill2024disentangling}, viene utilizzata anche la notazione $B \equiv H$ quando si intende enfatizzare che si stanno considerando i \textit{valori} delle attivazioni (non solo la loro presenza).
 \paragraph{Matrice delle attivazioni binaria.} La \textbf{matrice binaria} $A \in \{0,1\}^{N \times n}$ indica semplicemente se una feature è attiva o meno:
 \begin{equation}
     A_{ki} = \chi_{H_{ki} > 0} = 
@@ -746,7 +780,7 @@ Grazie al vincolo Top-K, la matrice $H$ è intrinsecamente sparsa: per ogni riga
     \end{cases}
     \label{eq:binary_activation}
 \end{equation}
-dove $\chi$ è la funzione caratteristica. Una feature è considerata ``attiva'' quando la sua attivazione è non nulla---ovvero quando è stata selezionata dal meccanismo Top-K.
+dove $\chi$ è la funzione caratteristica. Una feature è considerata ``attiva'' quando la sua attivazione è non nulla, vale a dire quando è stata selezionata dal meccanismo Top-K.
 \begin{figure}[htbp]
     \centering
     \begin{tikzpicture}[scale=0.75]
@@ -861,7 +895,7 @@ dove $\chi$ è la funzione caratteristica. Una feature è considerata ``attiva''
     C_{ij} = \sum_{k=1}^{N} A_{ki} \cdot A_{kj} = \left( A^T A \right)_{ij}
     \label{eq:cooccurrence}
 \end{equation}
-La matrice $C$ è simmetrica ($C_{ij} = C_{ji}$) e gli elementi diagonali $C_{ii}$ rappresentano la \textbf{frequenza di attivazione} della feature $i$---il numero totale di documenti su cui si attiva:
+La matrice $C$ è simmetrica ($C_{ij} = C_{ji}$) e gli elementi diagonali $C_{ii}$ rappresentano la \textbf{frequenza di attivazione} della feature $i$, vale a dire il numero totale di documenti su cui si attiva:
 \begin{equation}
     f_i = C_{ii} = \sum_{k=1}^{N} A_{ki}
     \label{eq:activation_frequency}
@@ -878,7 +912,7 @@ dove $\epsilon$ è una piccola costante per la stabilità numerica. Questa norma
     \label{eq:activation_similarity}
 \end{equation}
 dove $H_{ki}$ è il valore dell'attivazione (non solo 0 o 1). Due feature con alta $D_{ij}$ non solo si attivano spesso insieme, ma lo fanno con intensità correlate.
-\paragraph{Similarità geometrica tra SAE.} Le matrici precedenti descrivono le relazioni tra feature \textit{all'interno} di un singolo SAE. Per confrontare feature \textit{tra SAE diversi}---ad esempio per studiare come le feature evolvono al crescere della capacità---si utilizza la \textbf{matrice di similarità geometrica}.
+\paragraph{Similarità geometrica tra SAE.} Le matrici precedenti descrivono le relazioni tra feature \textit{all'interno} di un singolo SAE. Per confrontare feature \textit{tra SAE diversi}, ad esempio per studiare come le feature evolvono al crescere della capacità, si utilizza la \textbf{matrice di similarità geometrica}.
 Dati due SAE con $n_1$ e $n_2$ feature rispettivamente, la matrice $S \in \mathbb{R}^{n_1 \times n_2}$ è definita come:
 \begin{equation}
     S_{ij} = \frac{\mathbf{w}_i^T \mathbf{w}_j}{\|\mathbf{w}_i\| \|\mathbf{w}_j\|}
@@ -887,7 +921,7 @@ Dati due SAE con $n_1$ e $n_2$ feature rispettivamente, la matrice $S \in \mathb
 dove $\mathbf{w}_i$ è la $i$-esima colonna del decoder $W_d$ del primo SAE e $\mathbf{w}_j$ la $j$-esima colonna del decoder del secondo SAE.
 \begin{notebox}
 \textbf{Perché il decoder e non l'encoder?}\\[0.5em]
-Le colonne del decoder $\mathbf{w}_i$ rappresentano le \textbf{direzioni semantiche} delle feature nello spazio degli embedding---sono loro a definire ``cosa significa'' ogni feature (cfr.\ Sezione~\ref{subsubsec:features_as_directions}). Le righe dell'encoder $\mathbf{e}_i$, invece, sono direzioni ausiliarie ottimizzate per \textit{rilevare} le feature minimizzando l'interferenza, ma non hanno un significato semantico diretto. Confrontare i vettori decoder significa quindi confrontare il \textit{contenuto semantico} delle feature, non il meccanismo con cui vengono rilevate.
+Le colonne del decoder $\mathbf{w}_i$ rappresentano le \textbf{direzioni semantiche} delle feature nello spazio degli embedding: sono esse a definire ``cosa significa'' ogni feature (cfr.\ Paragrafo~\ref{subsubsec:features_as_directions}). Le righe dell'encoder $\mathbf{e}_i$, invece, sono direzioni ausiliarie ottimizzate per \textit{rilevare} le feature minimizzando l'interferenza, ma non hanno un significato semantico diretto. Confrontare i vettori decoder significa quindi confrontare il \textit{contenuto semantico} delle feature, non il meccanismo con cui vengono rilevate.
 \end{notebox}
 La Tabella~\ref{tab:matrices_summary} riassume le matrici introdotte e il loro ruolo nell'analisi.
 \begin{table}[htbp]
@@ -908,20 +942,50 @@ La Tabella~\ref{tab:matrices_summary} riassume le matrici introdotte e il loro r
     \end{tabular}
 \end{table}
 
-Nelle sezioni seguenti utilizzeremo queste matrici per identificare le \textit{feature families} (Sezione~\ref{subsubsec:feature_families}) e caratterizzare il fenomeno del \textit{feature splitting} (Sezione~\ref{subsubsec:feature_splitting}).
+Nei paragrafi successivi queste matrici saranno utilizzate per identificare le \textit{feature families} (Paragrafo~\ref{subsubsec:feature_families}) e caratterizzare il fenomeno del \textit{feature splitting} (Paragrafo~\ref{subsubsec:feature_splitting}).
 \subsubsection{Feature families: struttura gerarchica intra-SAE}
 \label{subsubsec:feature_families}
 
-L'analisi della matrice di co-occorrenza $C$ rivela un pattern caratteristico: esistono gruppi di feature con alta co-occorrenza interna e bassa co-occorrenza con l'esterno. Ma la struttura non è simmetrica all'interno dei gruppi. Tipicamente, una feature---il \textbf{parent}---co-occorre con tutte le altre del gruppo, mentre le altre---i \textbf{children}---co-occorrono col parent ma raramente tra loro.
 
-O'Neill et al.~\parencite{oneill2024disentangling} chiamano questi gruppi \textbf{feature families} e propongono un algoritmo per identificarli automaticamente a partire dalla matrice di co-occorrenza.
 
-Consideriamo un dominio come l'ottimizzazione nel machine learning. Una feature generale ``Optimization Techniques'' potrebbe attivarsi ogni volta che un paper parla di ottimizzazione---che sia SGD, Adam, o metodi del secondo ordine. Feature più specifiche come ``Adam optimizer'' o ``Newton's method'' si attivano solo su sottoinsiemi di questi paper. La feature generale (parent) co-occorre con tutte le specifiche (children), ma ``Adam'' e ``Newton'' raramente compaiono insieme nello stesso paper. Questa struttura si riflette nella matrice $C^{\text{norm}}$: il parent ha alta co-occorrenza normalizzata con ogni child, ma i children hanno bassa co-occorrenza tra loro.
+L'analisi della matrice di co-occorrenza $C$ rivela un pattern caratteristico: esistono gruppi di feature con alta co-occorrenza interna e bassa co-occorrenza con l'esterno. Ma la struttura non è simmetrica all'interno dei gruppi. Tipicamente, una feature, il \textbf{parent}, co-occorre con tutte le altre del gruppo, mentre le altre, i \textbf{children}, co-occorrono col parent ma raramente tra loro.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\textwidth]{pictures/cap5/9_fam_1.png}
+    \caption{Grafo delle feature estratte dallo Sparse Autoencoder. Ogni nodo rappresenta una feature e gli archi collegano feature con co-occorrenza sopra soglia.}
+    \label{fig:feature_graph}
+\end{figure}
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\textwidth]{pictures/cap5/10_fam_2.png}
+    \caption{Le feature si organizzano in grappoli che corrispondono alle feature families. Ogni grappolo presenta una struttura gerarchica con un parent centrale e children periferici.}
+    \label{fig:feature_families_clusters}
+\end{figure}
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\textwidth]{pictures/cap5/11_feature_fam_3.png}
+    \caption{In blu sono evidenziate feature che fungono da ponte tra più feature families, collegando concetti appartenenti a domini semantici diversi.}
+    \label{fig:feature_bridges}
+\end{figure}
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\textwidth]{pictures/cap5/12_featur_familis_children.png}
+    \caption{Feature figlie legate al rispettivo genitore (cryptography). Ogni figlio rappresenta un sotto-concetto specifico del tema generale catturato dal parent.}
+    \label{fig:feature_children_cryptography}
+\end{figure}
+
+In~\parencite{oneill2024disentangling} questi gruppi vengono chiamati \textbf{feature families} e viene proposto un algoritmo per identificarli automaticamente a partire dalla matrice di co-occorrenza.
+
+Si consideri un dominio come l'ottimizzazione nel machine learning. Una feature generale ``Optimization Techniques'' potrebbe attivarsi ogni volta che un paper parla di ottimizzazione, che si tratti di SGD, Adam, o metodi del secondo ordine. Feature più specifiche come ``Adam optimizer'' o ``Newton's method'' si attivano solo su sottoinsiemi di questi paper. La feature generale (parent) co-occorre con tutte le specifiche (children), ma ``Adam'' e ``Newton'' raramente compaiono insieme nello stesso paper. Questa struttura si riflette nella matrice $C^{\text{norm}}$: il parent ha alta co-occorrenza normalizzata con ogni child, ma i children hanno bassa co-occorrenza tra loro.
 
 L'identificazione delle feature families procede in quattro passi:
 
 \begin{enumerate}
-    \item \textbf{Selezione delle feature.} Si considerano solo le feature altamente interpretabili, definite da O'Neill et al.\ come quelle con $\text{F1} \geq 0.8$ e correlazione di Pearson $\geq 0.8$ nel task di predizione dell'Interpreter (cfr.\ Sezione~\ref{subsec:interpretability}). Questa selezione preliminare garantisce che le famiglie estratte siano composte da feature semanticamente significative.
+    \item \textbf{Selezione delle feature.} Si considerano solo le feature altamente interpretabili, definite in~\parencite{oneill2024disentangling} come quelle con $\text{F1} \geq 0.8$ e correlazione di Pearson $\geq 0.8$ nel task di predizione dell'Interpreter (cfr.\ Paragrafo~\ref{subsec:interpretability}). Questa selezione preliminare garantisce che le famiglie estratte siano composte da feature semanticamente significative.
     
     \item \textbf{Costruzione del grafo pesato.} Si parte dalla matrice di co-occorrenza normalizzata $C^{\text{norm}}$ e si applica una soglia $\tau$ per filtrare le relazioni deboli. Due feature $i$ e $j$ vengono collegate da un arco se e solo se:
     \begin{equation}
@@ -930,9 +994,9 @@ L'identificazione delle feature families procede in quattro passi:
     \end{equation}
     dove tipicamente $\tau = 0.1$. L'intuizione è semplice: se la feature $j$ si attiva in meno del 10\% dei casi in cui si attiva la feature $i$, la relazione è troppo debole per essere considerata significativa. Il risultato è un grafo pesato $G = (V, E)$ in cui i nodi $V$ sono le feature e gli archi $E$ collegano coppie con co-occorrenza sopra soglia, con peso $w_{ij} = C^{\text{norm}}_{ij}$.
     
-    \item \textbf{Estrazione del Maximum Spanning Tree.} Dal grafo pesato $G$ si estrae il \textbf{Maximum Spanning Tree} (MST)---l'albero di copertura che connette tutti i nodi massimizzando la somma dei pesi degli archi. A differenza del più noto Minimum Spanning Tree usato per trovare connessioni a costo minimo, qui si vuole preservare le relazioni \textit{più forti}. L'MST ha due proprietà fondamentali: (1) connette tutte le feature in un'unica struttura, e (2) evita i cicli, garantendo una topologia ad albero che si presta naturalmente all'interpretazione gerarchica.
+    \item \textbf{Estrazione del Maximum Spanning Tree.} Dal grafo pesato $G$ si estrae il \textbf{Maximum Spanning Tree} (MST), vale a dire l'albero di copertura che connette tutti i nodi massimizzando la somma dei pesi degli archi. A differenza del più noto Minimum Spanning Tree usato per trovare connessioni a costo minimo, qui si intende preservare le relazioni \textit{più forti}. L'MST ha due proprietà fondamentali: (1) connette tutte le feature in un'unica struttura, e (2) evita i cicli, garantendo una topologia ad albero che si presta naturalmente all'interpretazione gerarchica.
     
-    \item \textbf{Orientamento degli archi.} L'albero ottenuto è inizialmente non orientato. Per convertirlo in una gerarchia, si assegna una direzione a ogni arco basandosi sulla frequenza di attivazione $f_i$ (Equazione~\ref{eq:activation_frequency}). Gli archi vengono orientati dalla feature più frequente verso quella meno frequente:
+    \item \textbf{Orientamento degli archi.} L'albero ottenuto è inizialmente non orientato. Per convertirlo in una gerarchia, si assegna una direzione a ogni arco basandosi sulla frequenza di attivazione $f_i$ (come in Eq.~\ref{eq:activation_frequency}). Gli archi vengono orientati dalla feature più frequente verso quella meno frequente:
     \begin{equation}
         i \to j \quad \text{se e solo se} \quad f_i > f_j
         \label{eq:edge_orientation}
@@ -1009,8 +1073,8 @@ L'identificazione delle feature families procede in quattro passi:
     \caption{Costruzione di una feature family. (Sinistra) Il grafo pesato $G$ con pesi $C^{\text{norm}}_{ij}$; gli archi tratteggiati sono sotto soglia e verranno rimossi. (Centro) Il Maximum Spanning Tree preserva solo le connessioni più forti. (Destra) L'orientamento basato sulla frequenza $f_i$ rivela la struttura gerarchica: $f_1$ (parent) punta verso i children meno frequenti.}
     \label{fig:family_construction}
 \end{figure}
-Nel grafo orientato risultante, le \textbf{radici}---nodi senza archi entranti---sono i parent delle famiglie. A partire da ciascuna radice, una visita in profondità (depth-first search) raccoglie tutti i discendenti, formando una feature family. La struttura tipica è a stella: il parent è connesso direttamente a tutti i children, che raramente sono connessi tra loro. Questa topologia riflette la struttura gerarchica dei concetti: il parent cattura un tema generale, i children catturano sotto-temi specifici che condividono il tema generale ma non si sovrappongono tra loro.
-Le feature families catturano la struttura gerarchica naturale dei concetti in un dominio. Nel dataset di O'Neill et al.\ su paper di machine learning, emergono famiglie come \textit{Optimization Techniques} (parent) con children \textit{Gradient Descent}, \textit{Adam}, \textit{RMSprop}, \textit{Momentum}; oppure \textit{Transformer models} (parent) con children \textit{Vision Transformers}, \textit{Positional Encoding}, \textit{Attention mechanisms}. Nel contesto medico-pediatrico di PRISMA, ci aspettiamo famiglie analoghe, come \textit{Infezioni respiratorie} (parent) con children \textit{Polmonite}, \textit{Bronchiolite}, \textit{Faringite}.
+Nel grafo orientato risultante, le \textbf{radici}, vale a dire i nodi senza archi entranti, sono i parent delle famiglie. A partire da ciascuna radice, una visita in profondità (depth-first search) raccoglie tutti i discendenti, formando una feature family. La struttura tipica è a stella: il parent è connesso direttamente a tutti i children, che raramente sono connessi tra loro. Questa topologia riflette la struttura gerarchica dei concetti: il parent cattura un tema generale, i children catturano sotto-temi specifici che condividono il tema generale ma non si sovrappongono tra loro.
+Le feature families catturano la struttura gerarchica naturale dei concetti in un dominio. Nel dataset utilizzato in~\parencite{oneill2024disentangling} su paper di machine learning, emergono famiglie come \textit{Optimization Techniques} (parent) con children \textit{Gradient Descent}, \textit{Adam}, \textit{RMSprop}, \textit{Momentum}; oppure \textit{Transformer models}~\parencite{vaswani2017attention} (parent) con children \textit{Vision Transformers}, \textit{Positional Encoding}, \textit{Attention mechanisms}. Nel contesto medico-pediatrico di PRISMA, è ragionevole attendersi famiglie analoghe, come \textit{Infezioni respiratorie} (parent) con children \textit{Polmonite}, \textit{Bronchiolite}, \textit{Faringite}.
 
 % [NOTA: Qui inserirò screenshot di PRISMA che mostra il grafo di una feature family]
 Le feature families non sono solo un artefatto dell'analisi: riflettono come il SAE ha imparato a organizzare i concetti del dominio, e forniscono una mappa navigabile della conoscenza codificata nelle rappresentazioni sparse.
@@ -1018,11 +1082,11 @@ Le feature families non sono solo un artefatto dell'analisi: riflettono come il 
 \subsubsection{Feature splitting: evoluzione inter-SAE}
 \label{subsubsec:feature_splitting}
 
-Le feature families descrivono la struttura \textit{all'interno} di un singolo SAE. Ma cosa succede quando confrontiamo SAE di capacità diverse addestrati sugli stessi dati? Emergono tre fenomeni distinti: alcune feature riappaiono identiche (\textit{feature ricorrenti}), altre si scindono in sotto-concetti più specifici (\textit{feature splitting}), altre ancora compaiono per la prima volta (\textit{feature nuove}).
+Le feature families descrivono la struttura \textit{all'interno} di un singolo SAE. Ma cosa succede quando si confrontano SAE di capacità diverse addestrati sugli stessi dati? Emergono tre fenomeni distinti: alcune feature riappaiono identiche (\textit{feature ricorrenti}), altre si scindono in sotto-concetti più specifici (\textit{feature splitting}), altre ancora compaiono per la prima volta (\textit{feature nuove}).
 
-Per studiare questi fenomeni, O'Neill et al.~\parencite{oneill2024disentangling} confrontano SAE con diversi valori di $k$ (numero di feature attive per documento) e $n$ (dimensione dello spazio latente), utilizzando due metriche complementari che catturano aspetti diversi della relazione tra feature.
+Per studiare questi fenomeni, in~\parencite{oneill2024disentangling} vengono confrontati SAE con diversi valori di $k$ (numero di feature attive per documento) e $n$ (dimensione dello spazio latente), utilizzando due metriche complementari che catturano aspetti diversi della relazione tra feature.
 
-La \textbf{similarità geometrica} $S_{ij}$, definita in Sezione~\ref{subsubsec:notation_matrices}, confronta le \textit{direzioni} dei vettori decoder $\mathbf{w}_i$ e $\mathbf{w}_j$ nello spazio degli embedding. È una proprietà dei pesi appresi: risponde alla domanda ``queste due feature puntano nella stessa direzione semantica?''. Può essere calcolata anche senza passare alcun documento attraverso il SAE.
+La \textbf{similarità geometrica} $S_{ij}$, definita nel Paragrafo~\ref{subsubsec:notation_matrices}, confronta le \textit{direzioni} dei vettori decoder $\mathbf{w}_i$ e $\mathbf{w}_j$ nello spazio degli embedding. È una proprietà dei pesi appresi: risponde alla domanda ``queste due feature puntano nella stessa direzione semantica?''. Può essere calcolata anche senza passare alcun documento attraverso il SAE.
 
 La \textbf{similarità di attivazione} confronta invece i \textit{pattern di attivazione} sui documenti. Ogni feature $i$ ha un profilo di attivazione sull'intero corpus, rappresentato dalla colonna $i$-esima della matrice $H$. Due feature con alta similarità di attivazione si ``accendono'' sugli stessi documenti, con intensità correlate. È una proprietà del comportamento sui dati: risponde alla domanda ``queste due feature reagiscono agli stessi input?''.
 
@@ -1049,9 +1113,9 @@ La similarità geometrica ha un'interpretazione immediata in termini di angoli. 
 \end{equation}
 dove $\theta_{ij}$ è l'angolo tra le direzioni $\mathbf{w}_i$ e $\mathbf{w}_j$ nello spazio degli embedding. Le soglie di similarità corrispondono quindi a soglie angolari: $S = 0.95$ equivale a $\theta \approx 18°$ (direzioni quasi parallele), $S = 0.5$ equivale a $\theta = 60°$ (angolo moderato), $S = 0$ equivale a $\theta = 90°$ (direzioni ortogonali).
 
-Perché servono entrambe le metriche? Consideriamo i casi limite. Due feature potrebbero puntare in direzioni simili ($S$ alta) ma attivarsi su documenti completamente diversi ($D$ bassa)---un caso raro, possibile artefatto del training. Viceversa, due feature potrebbero rappresentare concetti semanticamente distinti ($S$ bassa) ma co-occorrere frequentemente ($D$ alta)---ad esempio ``febbre'' e ``infezione'', concetti diversi che compaiono spesso insieme.
+Perché servono entrambe le metriche? Si considerino i casi limite. Due feature potrebbero puntare in direzioni simili ($S$ alta) ma attivarsi su documenti completamente diversi ($D$ bassa), un caso raro, possibile artefatto del training. Viceversa, due feature potrebbero rappresentare concetti semanticamente distinti ($S$ bassa) ma co-occorrere frequentemente ($D$ alta), ad esempio ``febbre'' e ``infezione'', concetti diversi che compaiono spesso insieme.
 
-Data una coppia di SAE---uno ``piccolo'' con $n_1$ feature e uno ``grande'' con $n_2$ feature ($n_1 < n_2$)---per ogni feature $j$ del SAE grande si identifica il \textbf{nearest neighbour} nel SAE piccolo:
+Data una coppia di SAE, uno ``piccolo'' con $n_1$ feature e uno ``grande'' con $n_2$ feature ($n_1 < n_2$), per ogni feature $j$ del SAE grande si identifica il \textbf{nearest neighbour} nel SAE piccolo:
 \begin{equation}
     i^*(j) = \underset{i \in \{1,\dots,n_1\}}{\mathrm{arg\,max}} \; S_{ij}
     \label{eq:nearest_neighbour}
@@ -1059,11 +1123,11 @@ Data una coppia di SAE---uno ``piccolo'' con $n_1$ feature e uno ``grande'' con 
 e si calcola sia la similarità geometrica massima $S^*_j = S_{i^*(j), j}$, sia la similarità di attivazione tra $j$ e $i^*(j)$. Combinando le due metriche, ogni feature del SAE grande può essere classificata:
 
 \begin{enumerate}
-    \item \textbf{Feature ricorrenti.} Caratterizzate da alta similarità geometrica ($S^*_j > 0.95$, ovvero $\theta < 18°$) \textit{e} alta similarità di attivazione. Riappaiono sostanzialmente invariate nel SAE più grande. Rappresentano concetti ``atomici'' che non si scompongono ulteriormente all'aumentare della capacità---ad esempio, ``O-type stars'' in astrofisica o ``Generative Adversarial Networks'' in machine learning.
+    \item \textbf{Feature ricorrenti.} Caratterizzate da alta similarità geometrica ($S^*_j > 0.95$, vale a dire $\theta < 18°$) \textit{e} alta similarità di attivazione. Riappaiono sostanzialmente invariate nel SAE più grande. Rappresentano concetti ``atomici'' che non si scompongono ulteriormente all'aumentare della capacità, ad esempio ``O-type stars'' in astrofisica o ``Generative Adversarial Networks'' in machine learning.
     
-    \item \textbf{Feature da splitting.} Caratterizzate da similarità geometrica moderata ($0.5 < S^*_j < 0.95$, ovvero $18° < \theta < 60°$) e similarità di attivazione parziale. Emergono dalla scissione di una feature più generale: si attivano su un \textit{sottoinsieme} dei documenti che attivavano la feature parent. Ad esempio, ``Periodicity detection'' nel SAE piccolo potrebbe scindersi in ``Quasi-periodic oscillations in blazars'' e ``Pulsar timing'' nel SAE grande.
+    \item \textbf{Feature da splitting.} Caratterizzate da similarità geometrica moderata ($0.5 < S^*_j < 0.95$, vale a dire $18° < \theta < 60°$) e similarità di attivazione parziale. Emergono dalla scissione di una feature più generale: si attivano su un \textit{sottoinsieme} dei documenti che attivavano la feature parent. Ad esempio, ``Periodicity detection'' nel SAE piccolo potrebbe scindersi in ``Quasi-periodic oscillations in blazars'' e ``Pulsar timing'' nel SAE grande.
     
-    \item \textbf{Feature nuove.} Caratterizzate da bassa similarità geometrica ($S^*_j < 0.5$, ovvero $\theta > 60°$) \textit{oppure} bassa similarità di attivazione. Non hanno corrispondenti nel SAE più piccolo: il concetto non era rappresentabile con la capacità precedente.
+    \item \textbf{Feature nuove.} Caratterizzate da bassa similarità geometrica ($S^*_j < 0.5$, vale a dire $\theta > 60°$) \textit{oppure} bassa similarità di attivazione. Non hanno corrispondenti nel SAE più piccolo: il concetto non era rappresentabile con la capacità precedente.
 \end{enumerate}
 
 \begin{figure}[htbp]
@@ -1224,12 +1288,10 @@ Il fenomeno dello splitting ha implicazioni pratiche importanti: SAE più grandi
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsubsection{Quantificare la struttura: Effective Rank}
 \label{subsubsec:effective_rank}
-
-
-Questa sezione presenta un contributo originale di questa tesi: l'applicazione dell'Effective Rank alla matrice di attivazione degli Sparse Autoencoder come metrica per quantificare la compressione semantica.
-Le sezioni precedenti hanno mostrato che le feature apprese da un SAE non sono indipendenti: si organizzano in famiglie gerarchiche (Sezione~\ref{subsubsec:feature_families}) e si scindono progressivamente al crescere della capacità (Sezione~\ref{subsubsec:feature_splitting}). Queste strutture implicano \textit{correlazioni sistematiche} nella matrice di attivazione $H$: feature della stessa famiglia tendono a co-attivarsi, feature da splitting si attivano su sottoinsiemi sovrapposti di documenti.
+Questo paragrafo presenta un contributo originale di questa tesi: l'applicazione dell'Effective Rank alla matrice di attivazione degli Sparse Autoencoder come metrica per quantificare la compressione semantica.
+I paragrafi precedenti hanno mostrato che le feature apprese da un SAE non sono indipendenti: si organizzano in famiglie gerarchiche (Paragrafo~\ref{subsubsec:feature_families}) e si scindono progressivamente al crescere della capacità (Paragrafo~\ref{subsubsec:feature_splitting}). Queste strutture implicano \textit{correlazioni sistematiche} nella matrice di attivazione $H$: feature della stessa famiglia tendono a co-attivarsi, feature da splitting si attivano su sottoinsiemi sovrapposti di documenti.
 Una conseguenza diretta è che la matrice $H \in \mathbb{R}^{N \times n}$, pur avendo $n$ colonne (feature), non utilizza realmente $n$ gradi di libertà indipendenti. La dimensionalità \textit{effettiva} del codice sparso è inferiore alla dimensionalità nominale. Quantificare questo gap permette di misurare quanto la struttura semantica del dominio ``comprime'' le rappresentazioni apprese.
-Il rango matriciale classico non è adatto a questo scopo: è instabile in presenza di rumore e restituisce un intero, perdendo informazione sulla distribuzione della varianza tra le direzioni. Per questo adottiamo l'\textbf{Effective Rank}~\parencite{roy2007effective}, una misura continua e robusta della dimensionalità intrinseca basata sull'entropia dello spettro singolare.
+Il rango matriciale classico non è adatto a questo scopo: è instabile in presenza di rumore e restituisce un intero, perdendo informazione sulla distribuzione della varianza tra le direzioni. Per questo viene adottato l'\textbf{Effective Rank}~\parencite{roy2007effective}, una misura continua e robusta della dimensionalità intrinseca basata sull'entropia dello spettro singolare.
 Sia $H = U \Sigma V^T$ la decomposizione ai valori singolari (SVD) della matrice di attivazione, con valori singolari $\sigma_1 \geq \sigma_2 \geq \dots \geq \sigma_Q \geq 0$, dove $Q = \min(N, n)$. Si definisce la \textbf{distribuzione normalizzata} dei valori singolari:
 \begin{equation}
     p_i = \frac{\sigma_i}{\sum_{j=1}^{Q} \sigma_j} = \frac{\sigma_i}{\|\boldsymbol{\sigma}\|_1}
@@ -1308,15 +1370,15 @@ L'effective rank ha un'interpretazione intuitiva legata alla distribuzione della
     \caption{Interpretazione geometrica dell'Effective Rank. Lo spettro dei valori singolari $\{\sigma_i\}$ determina quante direzioni la matrice utilizza effettivamente. Uno spettro uniforme (sinistra) indica che tutte le direzioni contribuiscono equamente: $\text{ER} \approx n$. Uno spettro concentrato (destra) indica che una sola direzione domina: $\text{ER} \approx 1$. I casi reali (centro) mostrano un decadimento graduale, con $\text{ER}$ che quantifica il numero effettivo di direzioni informative.}
     \label{fig:effective_rank_spectrum}
 \end{figure}
-Nel contesto degli Sparse Autoencoder, l'effective rank della matrice di attivazione $H$ misura quante feature ``indipendenti'' il SAE sta effettivamente utilizzando. Se le feature fossero perfettamente scorrelate, ci aspetteremmo $\text{ER}(H) \approx n$. Ma la presenza di feature families e splitting introduce correlazioni che riducono l'effective rank: $\text{ER}(H) < n$.
-Per isolare il contributo della \textit{struttura semantica} dei dati dalla compressione intrinseca dell'architettura, confrontiamo l'effective rank su dati reali con un'\textbf{ipotesi nulla}: addestriamo lo stesso SAE su input casuali non strutturati (embedding generati uniformemente). Il SAE addestrato su rumore non può apprendere correlazioni semantiche, quindi il suo effective rank $\text{ER}_{\text{null}}$ riflette solo i vincoli architetturali (Top-K, dimensione latente).
-Definiamo il \textbf{Semantic Compression Ratio} (SCR) come la riduzione percentuale dell'effective rank dovuta alla semantica:
+Nel contesto degli Sparse Autoencoder, l'effective rank della matrice di attivazione $H$ misura quante feature ``indipendenti'' il SAE sta effettivamente utilizzando. Se le feature fossero perfettamente scorrelate, ci si aspetterebbe $\text{ER}(H) \approx n$. Ma la presenza di feature families e splitting introduce correlazioni che riducono l'effective rank: $\text{ER}(H) < n$.
+Per isolare il contributo della \textit{struttura semantica} dei dati dalla compressione intrinseca dell'architettura, è possibile confrontare l'effective rank su dati reali con un'\textbf{ipotesi nulla}: si addestra lo stesso SAE su input casuali non strutturati (embedding generati uniformemente). Il SAE addestrato su rumore non può apprendere correlazioni semantiche, quindi il suo effective rank $\text{ER}_{\text{null}}$ riflette solo i vincoli architetturali (Top-K, dimensione latente).
+Si definisce il \textbf{Semantic Compression Ratio} (SCR) come la riduzione percentuale dell'effective rank dovuta alla semantica:
 \begin{equation}
     \text{SCR}(\%) = 100 \cdot \frac{\text{ER}_{\text{null}} - \text{ER}_{\text{real}}}{\text{ER}_{\text{null}}}
     \label{eq:scr}
 \end{equation}
 
-Un valore di $\text{SCR} = 40\%$ significa che il 40\% della compressione osservata è attribuibile alla struttura semantica del dominio---le co-attivazioni tra concetti correlati (febbre $\leftrightarrow$ infezione), le gerarchie concettuali (polmonite $\subset$ infezioni respiratorie), e le dipendenze implicite nel corpus.
+Un valore di $\text{SCR} = 40\%$ significa che il 40\% della compressione osservata è attribuibile alla struttura semantica del dominio, vale a dire le co-attivazioni tra concetti correlati (febbre $\leftrightarrow$ infezione), le gerarchie concettuali (polmonite $\subset$ infezioni respiratorie) e le dipendenze implicite nel corpus.
 
 \begin{figure}[htbp]
     \centering
@@ -1349,7 +1411,7 @@ Un valore di $\text{SCR} = 40\%$ significa che il 40\% della compressione osserv
         \node[right, font=\scriptsize] at (2, 5) {Dati reali (struttura semantica)};
         
     \end{tikzpicture}
-    \caption{Andamento qualitativo dell'Effective Rank al variare della capacità del SAE. Su dati casuali (tratteggiato), l'ER cresce linearmente con $n$: non ci sono correlazioni da sfruttare. Su dati reali (linea continua), l'ER cresce più lentamente: la struttura semantica introduce correlazioni che riducono la dimensionalità effettiva. Il gap tra le due curve, quantificato dal Semantic Compression Ratio, misura la ``compressione semantica'' del dominio.}
+    \caption{Andamento qualitativo dell'Effective Rank al variare della capacità del SAE. Su dati casuali (tratteggiato), l'ER cresce linearmente con $n$: non esistono correlazioni da sfruttare. Su dati reali (linea continua), l'ER cresce più lentamente: la struttura semantica introduce correlazioni che riducono la dimensionalità effettiva. Il gap tra le due curve, quantificato dal Semantic Compression Ratio, misura la ``compressione semantica'' del dominio.}
     \label{fig:er_scaling}
 \end{figure}
 L'analisi dell'effective rank fornisce una prospettiva complementare alle feature families e allo splitting:

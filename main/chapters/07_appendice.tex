@@ -1,0 +1,164 @@
+\section{Appendice}
+
+\subsection{PCA come caso particolare di un autoencoder lineare}
+\label{app:pca}
+
+Nel Capitolo 2 abbiamo introdotto gli autoencoder come architetture capaci di apprendere rappresentazioni latenti compresse dei dati. In questa appendice mostriamo un risultato classico: un autoencoder lineare con bottleneck, addestrato minimizzando l'errore quadratico medio di ricostruzione, apprende una rappresentazione latente che coincide con la \textit{Principal Component Analysis} (PCA). Questo risultato, dovuto a Baldi e Hornik (\cite{baldi1989neural}), stabilisce un collegamento diretto tra la riduzione dimensionale classica e gli autoencoder neurali, e chiarisce perché la non linearità sia necessaria per apprendere rappresentazioni più ricche di una semplice proiezione lineare.
+
+\subsubsection{Formulazione del problema}
+
+Consideriamo un autoencoder in cui sia l'encoder che il decoder sono trasformazioni lineari, prive di funzioni di attivazione non lineari. Sia $\mathbf{x} \in \mathbb{R}^n$ un'osservazione di input. L'encoder mappa l'input in uno spazio latente di dimensione $q < n$:
+\begin{equation}
+    \mathbf{h} = W_e \mathbf{x}
+\end{equation}
+dove $W_e \in \mathbb{R}^{q \times n}$ è la matrice dei pesi dell'encoder (omettiamo i bias per semplicità, assumendo dati centrati). Il decoder ricostruisce l'input a partire dalla rappresentazione latente:
+\begin{equation}
+    \hat{\mathbf{x}} = W_d \mathbf{h} = W_d W_e \mathbf{x}
+\end{equation}
+dove $W_d \in \mathbb{R}^{n \times q}$. La ricostruzione è quindi una trasformazione lineare dell'input attraverso la matrice composta $W = W_d W_e \in \mathbb{R}^{n \times n}$, che ha rango al più $q$.
+
+L'obiettivo dell'addestramento è minimizzare l'errore quadratico medio di ricostruzione sul dataset:
+\begin{equation}
+    \mathcal{L}(W_e, W_d) = \frac{1}{M} \sum_{i=1}^{M} \| \mathbf{x}_i - W_d W_e \mathbf{x}_i \|^2
+    \label{eq:pca_loss}
+\end{equation}
+
+\subsubsection{Riformulazione come problema di approssimazione di rango basso}
+
+La funzione di perdita (\ref{eq:pca_loss}) può essere riscritta in forma matriciale. Sia $X \in \mathbb{R}^{n \times M}$ la matrice dei dati, dove ogni colonna è un'osservazione. La loss diventa:
+\begin{equation}
+    \mathcal{L} = \frac{1}{M} \| X - W_d W_e X \|_F^2
+\end{equation}
+dove $\| \cdot \|_F$ è la norma di Frobenius. Poiché $W_d W_e$ è una matrice $n \times n$ di rango al più $q$, il problema si riduce a trovare la migliore approssimazione di rango $q$ della matrice dei dati nel senso dei minimi quadrati. Questo è esattamente il problema risolto dal \textit{teorema di Eckart--Young--Mirsky}.
+
+\subsubsection{Il teorema di Eckart--Young--Mirsky}
+
+Sia $\Sigma = \frac{1}{M} X X^\top$ la matrice di covarianza dei dati (centrati), con decomposizione spettrale:
+\begin{equation}
+    \Sigma = U \Lambda U^\top
+\end{equation}
+dove $U = [\mathbf{u}_1, \ldots, \mathbf{u}_n]$ è la matrice ortogonale degli autovettori e $\Lambda = \text{diag}(\lambda_1, \ldots, \lambda_n)$ con $\lambda_1 \geq \lambda_2 \geq \cdots \geq \lambda_n \geq 0$. Il teorema di Eckart--Young--Mirsky afferma che la proiezione lineare di rango $q$ che minimizza l'errore di ricostruzione è data dalla proiezione sullo spazio generato dai primi $q$ autovettori di $\Sigma$, ovvero le $q$ \textit{componenti principali}:
+\begin{equation}
+    P^* = U_q U_q^\top
+\end{equation}
+dove $U_q = [\mathbf{u}_1, \ldots, \mathbf{u}_q] \in \mathbb{R}^{n \times q}$ contiene i primi $q$ autovettori. L'errore di ricostruzione ottimale è:
+\begin{equation}
+    \mathcal{L}^* = \sum_{i=q+1}^{n} \lambda_i
+\end{equation}
+cioè la somma degli autovalori scartati.
+
+\subsubsection{Equivalenza con l'autoencoder lineare}
+
+Il risultato fondamentale di Baldi e Hornik è il seguente: qualsiasi minimo globale della loss (\ref{eq:pca_loss}) soddisfa
+\begin{equation}
+    W_d W_e = U_q U_q^\top
+\end{equation}
+In altri termini, il prodotto $W_d W_e$ converge alla proiezione PCA, indipendentemente dalla parametrizzazione specifica di $W_e$ e $W_d$. Le matrici individuali $W_e$ e $W_d$ non sono univocamente determinate --- esiste un'intera famiglia di soluzioni equivalenti legate da rotazioni nello spazio latente --- ma la proiezione complessiva è unica e coincide con la PCA.
+
+Più precisamente, all'ottimo:
+\begin{itemize}[itemsep=0.3em]
+    \item Le righe di $W_e$ generano lo stesso sottospazio delle prime $q$ componenti principali.
+    \item Le colonne di $W_d$ generano lo stesso sottospazio.
+    \item La rappresentazione latente $\mathbf{h} = W_e \mathbf{x}$ è una rotazione arbitraria delle coordinate principali.
+\end{itemize}
+
+\subsubsection{Implicazioni}
+
+Questo risultato ha due conseguenze importanti per il presente lavoro.
+
+La prima è che \textbf{la linearità limita la capacità rappresentativa}. Un autoencoder lineare non può apprendere nulla di più di ciò che la PCA già cattura: la migliore approssimazione lineare di rango basso. Per estrarre strutture più ricche --- fattori di variazione non lineari, feature disentangled, concetti monosemantici --- sono necessarie funzioni di attivazione non lineari, come la ReLU utilizzata nello Sparse Autoencoder.
+
+La seconda è che \textbf{la compressione non implica interpretabilità}. La PCA comprime efficacemente i dati, ma le componenti principali sono combinazioni lineari di tutte le variabili originali, prive in generale di un significato semantico isolabile. Questo contrasto è alla base della scelta architetturale degli Sparse Autoencoder: anziché comprimere in poche dimensioni dense (come la PCA), espandere in molte dimensioni sparse, ciascuna associata a un concetto distinto.
+
+\clearpage
+
+\subsection{Quantizzazione degli LLM per l'inferenza}
+\label{app:quantizzazione}
+
+Nel Capitolo 6 si è menzionato che modelli linguistici di grande scala, come DeepSeek-V3 con 671 miliardi di parametri, possono essere eseguiti localmente grazie alla quantizzazione dei pesi. Questa appendice descrive il principio della quantizzazione e le tecniche utilizzate per ridurre l'occupazione di memoria dei modelli senza degradarne eccessivamente le prestazioni.
+
+\subsubsection{Il problema: la memoria dei modelli}
+
+Un modello linguistico è definito dai suoi parametri --- i pesi delle matrici di attenzione, delle proiezioni lineari, degli strati feed-forward. Ciascun parametro è un numero in virgola mobile. La scelta della \textit{precisione numerica} con cui questi numeri vengono memorizzati determina direttamente l'occupazione di memoria del modello.
+
+Nella rappresentazione standard a virgola mobile a 32 bit (FP32), ogni parametro occupa 4 byte. Per un modello con $N$ parametri, la memoria richiesta è:
+\begin{equation}
+    \text{Memoria}_{\text{FP32}} = 4N \text{ byte}
+\end{equation}
+Per un modello da 70 miliardi di parametri, questo corrisponde a circa 280 GB --- ben oltre la VRAM di qualsiasi GPU consumer. Anche in precisione dimezzata (FP16, 2 byte per parametro), lo stesso modello richiede circa 140 GB. La Tabella~\ref{tab:precision} riassume le principali rappresentazioni numeriche.
+
+\begin{table}[h]
+\centering
+\begin{tabular}{lccl}
+\toprule
+\textbf{Formato} & \textbf{Bit} & \textbf{Byte/param} & \textbf{Modello 70B} \\
+\midrule
+FP32 (float) & 32 & 4 & $\sim$280 GB \\
+FP16 / BF16 (half) & 16 & 2 & $\sim$140 GB \\
+INT8 & 8 & 1 & $\sim$70 GB \\
+INT4 & 4 & 0.5 & $\sim$35 GB \\
+\bottomrule
+\end{tabular}
+\caption{Occupazione di memoria al variare della precisione numerica per un modello con 70 miliardi di parametri. La quantizzazione a 4 bit riduce l'occupazione di un fattore $8\times$ rispetto a FP32.}
+\label{tab:precision}
+\end{table}
+
+\subsubsection{Principio della quantizzazione}
+
+La quantizzazione consiste nel mappare i valori dei pesi da una rappresentazione ad alta precisione (tipicamente FP16) a una rappresentazione a precisione ridotta (INT8 o INT4), riducendo il numero di bit utilizzati per ciascun parametro. L'idea fondamentale è che, durante l'inferenza, i pesi del modello non necessitano della stessa precisione richiesta durante l'addestramento: piccole perturbazioni nei valori dei pesi hanno un effetto trascurabile sulle predizioni finali.
+
+Formalmente, dato un peso $w \in \mathbb{R}$ rappresentato in FP16, la quantizzazione a $b$ bit lo mappa in un intero $w_q \in \{0, 1, \ldots, 2^b - 1\}$ tramite una trasformazione affine:
+\begin{equation}
+    w_q = \text{round}\left(\frac{w - w_{\min}}{w_{\max} - w_{\min}} \cdot (2^b - 1)\right)
+\end{equation}
+dove $w_{\min}$ e $w_{\max}$ sono i valori estremi del range di quantizzazione. La dequantizzazione ricostruisce un'approssimazione del peso originale:
+\begin{equation}
+    \hat{w} = w_{\min} + \frac{w_q}{2^b - 1} \cdot (w_{\max} - w_{\min})
+\end{equation}
+L'errore di quantizzazione $\epsilon = w - \hat{w}$ dipende dalla granularità della griglia, che dimezza a ogni bit rimosso.
+
+\subsubsection{Quantizzazione per gruppi}
+
+La quantizzazione uniforme su tutti i pesi di un layer è subottimale: la distribuzione dei pesi non è uniforme, e valori outlier possono costringere a un range ampio che riduce la precisione per la maggioranza dei pesi. Per mitigare questo problema, le tecniche moderne applicano la quantizzazione \textit{per gruppi}: i pesi di ciascun layer vengono suddivisi in blocchi di $g$ elementi (tipicamente $g = 128$), e ciascun blocco viene quantizzato con il proprio range $(w_{\min}, w_{\max})$. Questo richiede di memorizzare due parametri aggiuntivi (scala e zero-point) per ogni gruppo di $g$ pesi, con un overhead trascurabile:
+\begin{equation}
+    \text{Overhead} = \frac{2 \times 16}{g \times b} \approx \frac{32}{128 \times 4} = 6.25\%
+\end{equation}
+per quantizzazione a 4 bit con gruppi di 128. Il guadagno in precisione è significativo: ogni gruppo viene quantizzato nel range ottimale per i propri pesi, riducendo l'errore complessivo.
+
+\subsubsection{Tecniche di quantizzazione post-addestramento}
+
+Le tecniche più utilizzate per la quantizzazione di LLM operano \textit{dopo} l'addestramento (post-training quantization), senza richiedere un nuovo ciclo di training. Tra le principali:
+
+\textbf{GPTQ} (\cite{frantar2023gptqaccurateposttrainingquantization}) quantizza i pesi layer per layer, utilizzando un piccolo dataset di calibrazione per minimizzare l'errore di ricostruzione delle attivazioni. Per ogni layer, i pesi vengono quantizzati in ordine, e i pesi rimanenti vengono aggiustati per compensare l'errore introdotto dalla quantizzazione dei precedenti. Il metodo si basa sull'approssimazione dell'inversa della matrice Hessiana, derivata dal metodo Optimal Brain Quantization.
+
+\textbf{GGUF} è il formato di serializzazione utilizzato da \texttt{llama.cpp} e da Ollama per l'esecuzione di modelli quantizzati su CPU e su hardware Apple Silicon. Il formato supporta diverse configurazioni di quantizzazione (Q4\_0, Q4\_K\_M, Q5\_K\_M, Q8\_0, ecc.), dove il numero indica i bit di precisione e i suffissi specificano la strategia di raggruppamento. Ad esempio, Q4\_K\_M utilizza 4 bit con una strategia \textit{k-quants} che assegna precisione variabile ai diversi layer in base alla loro sensibilità.
+
+\textbf{AWQ} (\textit{Activation-aware Weight Quantization}, \cite{lin2024awqactivationawareweightquantization}) osserva che non tutti i pesi sono ugualmente importanti: quelli associati a canali di attivazione con magnitudine elevata hanno un impatto sproporzionato sulle prestazioni. AWQ protegge questi pesi critici quantizzandoli con maggiore precisione, ottenendo risultati superiori a GPTQ a parità di bit.
+
+\subsubsection{Il trade-off precisione--memoria}
+
+La quantizzazione introduce inevitabilmente una degradazione delle prestazioni del modello, che diventa più pronunciata al diminuire del numero di bit. La Tabella~\ref{tab:quant_tradeoff} illustra qualitativamente questo trade-off.
+
+\begin{table}[h]
+\centering
+\begin{tabular}{lcl}
+\toprule
+\textbf{Precisione} & \textbf{Riduzione memoria} & \textbf{Degradazione qualità} \\
+\midrule
+FP16 (baseline) & $1\times$ & Nessuna \\
+INT8 & $2\times$ & Trascurabile \\
+INT4 (Q4\_K\_M) & $4\times$ & Lieve \\
+INT4 (Q4\_0) & $4\times$ & Moderata \\
+INT3 & $\sim 5\times$ & Significativa \\
+INT2 & $\sim 8\times$ & Severa \\
+\bottomrule
+\end{tabular}
+\caption{Trade-off qualitativo tra riduzione di memoria e degradazione delle prestazioni al variare della precisione di quantizzazione. La soglia pratica per un uso affidabile si colloca tipicamente a 4 bit con strategie di raggruppamento ottimizzate (Q4\_K\_M).}
+\label{tab:quant_tradeoff}
+\end{table}
+
+In pratica, la quantizzazione a 4 bit con tecniche moderne (GPTQ, AWQ, o k-quants in formato GGUF) rappresenta il punto di equilibrio più comune: la riduzione di memoria è di un fattore $4\times$ rispetto a FP16, con una degradazione delle prestazioni che nella maggior parte dei benchmark risulta inferiore al 2--3\%.
+
+\subsubsection{Applicazione nel contesto di PRISMA}
+
+Nel contesto del presente lavoro, la quantizzazione ha reso possibile l'esecuzione locale di modelli linguistici di grande scala per l'interpretazione automatica delle feature. In particolare, il modello Gemma 3 27B utilizzato come interprete è stato eseguito in formato quantizzato su Ollama, sfruttando i 512 GB di memoria unificata del Mac Studio con chip Apple M3 Ultra (cfr.\ Sezione 6.1). La scelta della quantizzazione, combinata con l'architettura Unified Memory di Apple Silicon, ha permesso di mantenere l'intera pipeline di elaborazione --- dall'addestramento del SAE all'interpretazione delle feature --- su una singola macchina locale, senza necessità di trasmettere dati sensibili a servizi esterni.

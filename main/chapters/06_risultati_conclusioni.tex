@@ -1,0 +1,615 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% SEZIONE 6 — INTESTAZIONE + TESTO INTRODUTTIVO
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Risultati sperimentali}
+\label{sec:06_risultati}
+
+\epigraph{
+    In God we trust; all others must bring data.
+}{W. Edwards Deming}
+
+In questo capitolo saranno presentati i risultati sperimentali ottenuti con PRISMA. Nel Paragrafo~\ref{subsec:setup} sarà descritta l'infrastruttura hardware e software utilizzata per gli esperimenti, con particolare attenzione alle motivazioni architetturali e di privacy che hanno guidato la scelta di una piattaforma di elaborazione interamente locale. Nel Paragrafo~\ref{subsec:feature_extraction_results} saranno analizzate le feature estratte dallo Sparse Autoencoder sul dominio scientifico, illustrandone le proprietà attraverso esempi concreti e discutendo l'organizzazione in famiglie semantiche gerarchiche. Infine, nel Paragrafo~\ref{subsec:sviluppi_futuri} saranno delineate le direzioni di ricerca future, con una riflessione sul concetto di invariante semantico e sul suo collegamento con la Platonic Representation Hypothesis.
+
+\newpage
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% SUBSECTION: SETUP SPERIMENTALE
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Setup sperimentale}
+\label{subsec:setup}
+Prima di presentare i risultati ottenuti con PRISMA, è necessario descrivere l'infrastruttura hardware e software su cui sono stati condotti gli esperimenti. La scelta della piattaforma non è stata casuale: l'addestramento di Sparse Autoencoder e l'esecuzione di Large Language Models per l'interpretazione automatica delle feature richiedono risorse computazionali significative, in particolare per quanto riguarda la memoria disponibile. Inoltre, la natura sensibile dei dati trattati, vale a dire cartelle cliniche pediatriche fornite da Pedianet\footnote{Pedianet (\url{https://pedianet.it}) è una rete di ricerca che raccoglie dati clinici da pediatri di libera scelta italiani, costituendo uno dei più ampi database di medicina generale pediatrica in Europa.}, ha imposto vincoli stringenti sulla localizzazione dell'elaborazione. PRISMA è stato infatti utilizzato anche per finalità di analisi su tali dati clinici; i relativi risultati non sono tuttavia riportati nella presente tesi, in quanto protetti da accordo di riservatezza (NDA). L'esigenza di un'infrastruttura di inferenza interamente locale, qui dettata dalla normativa sulla protezione dei dati sanitari, è peraltro comune a numerose realtà aziendali e istituzionali che trattano dati sensibili.
+\subsubsection{Infrastruttura hardware}
+\label{subsubsec:hardware}
+Gli esperimenti sono stati condotti su un \textbf{Mac Studio} equipaggiato con chip \textbf{Apple M3 Ultra} e \textbf{512 GB} di memoria unificata. La Tabella~\ref{tab:hardware_specs} riassume le specifiche tecniche della macchina.
+
+\begin{table}[htbp]
+    \centering
+    \caption{Specifiche hardware della macchina utilizzata per gli esperimenti.}
+    \label{tab:hardware_specs}
+    \begin{tabular}{@{}ll@{}}
+        \toprule
+        \textbf{Componente} & \textbf{Specifica} \\
+        \midrule
+        Modello & Mac Studio (Mac15,14) \\
+        Chip & Apple M3 Ultra \\
+        Core CPU & 32 (24 performance + 8 efficiency) \\
+        Core GPU & 80 \\
+        Neural Engine & 32 core \\
+        Memoria unificata & 512 GB \\
+        Bandwidth memoria & 819 GB/s \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+La scelta di questa piattaforma è motivata da due fattori: una caratteristica architetturale distintiva dei chip Apple Silicon e un requisito di privacy imposto dalla natura dei dati.
+
+\paragraph{La Unified Memory Architecture.}
+A differenza delle architetture tradizionali, dove CPU e GPU dispongono di memorie separate (RAM di sistema e VRAM dedicata), nei chip Apple Silicon tutti i componenti computazionali, vale a dire CPU, GPU e Neural Engine, condividono lo stesso pool di memoria fisica. Questa architettura, denominata \textbf{Unified Memory Architecture} (UMA), elimina un collo di bottiglia fondamentale nel deep learning: il trasferimento dati tra CPU e GPU.
+
+\begin{figure}[htbp]
+    \centering
+    \begin{tikzpicture}[
+        scale=0.95,
+        block/.style={draw, rectangle, rounded corners=4pt, minimum height=1.4cm, minimum width=2.8cm, font=\small, fill=#1, drop shadow={opacity=0.15}},
+        memory/.style={draw, rectangle, rounded corners=6pt, minimum height=1.6cm, minimum width=11cm, font=\small\bfseries, fill=green!15, drop shadow={opacity=0.2}},
+        arrow/.style={->, thick, gray!60},
+        biarrow/.style={<->, very thick, green!50!black}
+    ]
+        
+        % Contenitore chip (sfondo)
+        \fill[gray!8, rounded corners=10pt] (-6, -0.5) rectangle (6, 4.2);
+        \draw[thick, rounded corners=10pt, gray!40] (-6, -0.5) rectangle (6, 4.2);
+        
+        % Titolo chip
+        \node[font=\normalsize\bfseries, gray!70] at (0, 3.7) {Apple M3 Ultra SoC};
+        
+        % CPU block
+        \node[block=blue!25] (cpu) at (-3.5, 1.9) {
+            \begin{tabular}{c}
+                \textbf{CPU} \\
+                \scriptsize 24 Performance \\
+                \scriptsize 8 Efficiency
+            \end{tabular}
+        };
+        
+        % GPU block
+        \node[block=orange!25] (gpu) at (0, 1.9) {
+            \begin{tabular}{c}
+                \textbf{GPU} \\
+                \scriptsize 80 cores \\
+                \scriptsize Ray Tracing
+            \end{tabular}
+        };
+        
+        % Neural Engine block
+        \node[block=violet!25] (ne) at (3.5, 1.9) {
+            \begin{tabular}{c}
+                \textbf{Neural Engine} \\
+                \scriptsize 32 cores \\
+                \scriptsize 31 TOPS
+            \end{tabular}
+        };
+        
+        % Memory controller (barra)
+        \fill[gray!20, rounded corners=3pt] (-5, 0) rectangle (5, 0.5);
+        \draw[gray!50, rounded corners=3pt] (-5, 0) rectangle (5, 0.5);
+        \node[font=\scriptsize\bfseries, gray!70] at (0, 0.25) {Memory Fabric · 819 GB/s};
+        
+        % Frecce dai componenti al memory controller
+        \draw[arrow, line width=1.2pt] (cpu.south) -- ++(0, -0.35);
+        \draw[arrow, line width=1.2pt] (gpu.south) -- ++(0, -0.35);
+        \draw[arrow, line width=1.2pt] (ne.south) -- ++(0, -0.35);
+        
+        % Unified Memory (sotto)
+        \node[memory] (mem) at (0, -1.7) {Unified Memory — 512 GB LPDDR5};
+        
+        % Freccia bidirezionale memory controller <-> memoria
+        \draw[biarrow, line width=2pt] (0, -0.1) -- (0, -0.9);
+        
+        % Annotazioni software (fuori dal chip)
+        \node[font=\scriptsize, blue!60!black, align=center] (ann1) at (-3.5, -3.5) {PyTorch MPS\\SAE Training};
+        \draw[->, blue!50, thick, dashed] (ann1.north) -- (-3.5, -2.5);
+        
+        \node[font=\scriptsize, orange!70!black, align=center] (ann2) at (0, -3.5) {BERT\\Embeddings};
+        \draw[->, orange!50, thick, dashed] (ann2.north) -- (0, -2.5);
+        
+        \node[font=\scriptsize, violet!60!black, align=center] (ann3) at (3.5, -3.5) {Ollama\\LLM Interpreter};
+        \draw[->, violet!50, thick, dashed] (ann3.north) -- (3.5, -2.5);
+        
+        % Nota zero-copy
+        \node[draw, rounded corners=3pt, fill=yellow!10, font=\scriptsize, inner sep=4pt] at (0, -4.5) {Zero-copy: tutti i componenti accedono agli stessi dati senza trasferimenti};
+        
+    \end{tikzpicture}
+    \caption{Architettura del chip Apple M3 Ultra con Unified Memory Architecture (UMA). I tre componenti computazionali, vale a dire CPU, GPU e Neural Engine, condividono lo stesso pool di 512 GB di memoria LPDDR5, accessibile attraverso un memory fabric con bandwidth aggregato di 819 GB/s. Il \textbf{Neural Engine} è un acceleratore hardware dedicato alle operazioni di machine learning (moltiplicazioni matriciali, convoluzioni), capace di 31 trilioni di operazioni al secondo (TOPS); viene sfruttato da Ollama per accelerare l'inferenza dei Large Language Models utilizzati come interpreti delle feature. L'architettura elimina i trasferimenti CPU-GPU tipici dei sistemi con memorie separate, abilitando workflow che alternano preprocessing (CPU), training (GPU) e inferenza LLM (Neural Engine) sugli stessi dati.}
+    \label{fig:m3_ultra_architecture}
+\end{figure}
+
+\paragraph{Il collo di bottiglia nelle architetture tradizionali.}
+Per comprendere il vantaggio della UMA, è utile considerare come funzionano le architetture convenzionali. In un sistema con CPU e GPU discrete, i due processori dispongono di memorie fisicamente separate: la RAM di sistema (accessibile alla CPU) e la VRAM (accessibile alla GPU). Quando si addestra una rete neurale, i dati devono essere copiati dalla RAM alla VRAM prima di ogni operazione su GPU, e i risultati devono essere copiati indietro per l'elaborazione su CPU.
+
+Il canale di comunicazione tra CPU e GPU è il bus \textbf{PCIe} (Peripheral Component Interconnect Express). Anche nelle configurazioni più recenti, il bandwidth di questo canale è ordini di grandezza inferiore a quello della memoria locale:
+
+\begin{table}[htbp]
+    \centering
+    \caption{Confronto del memory bandwidth tra architetture. Il bandwidth misura quanti dati possono essere trasferiti al secondo tra memoria e processori, un fattore critico per workload memory-bound come l'inferenza di LLM.}
+    \label{tab:bandwidth_comparison}
+    \begin{tabular}{@{}lrl@{}}
+        \toprule
+        \textbf{Interfaccia} & \textbf{Bandwidth} & \textbf{Note} \\
+        \midrule
+        PCIe 4.0 x16 & 32 GB/s & Standard attuale per GPU \\
+        PCIe 5.0 x16 & 64 GB/s & Ultima generazione \\
+        \midrule
+        NVIDIA RTX 4090 (VRAM) & 1.008 GB/s & Memoria locale GPU \\
+        NVIDIA A100 80GB (VRAM) & 2.039 GB/s & GPU professionale \\
+        \midrule
+        \textbf{Apple M3 Ultra (UMA)} & \textbf{819 GB/s} & Memoria unificata \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+Il problema emerge chiaramente: anche se la VRAM di una GPU NVIDIA ha bandwidth elevatissimo (1--2 TB/s), i dati devono prima \textit{attraversare} il bus PCIe, che è 15--30 volte più lento. Per workload che richiedono frequenti trasferimenti CPU-GPU, come l'addestramento di autoencoder con preprocessing su CPU, questo diventa il collo di bottiglia dominante.
+
+\begin{notebox}
+\textbf{Analogia: il magazzino e la porta}\\[0.5em]
+Il memory bandwidth può essere compreso con un'analogia. Si immagini la memoria come un magazzino e i processori (CPU/GPU) come operai che devono lavorare i materiali:
+\begin{itemize}
+    \item La \textbf{capacità della memoria} (512 GB) corrisponde alla dimensione del magazzino
+    \item Il \textbf{memory bandwidth} (819 GB/s) corrisponde alla larghezza della porta
+\end{itemize}
+Un magazzino enorme con una porta stretta costringe gli operai ad aspettare i materiali. Nelle architetture tradizionali, la ``porta'' tra CPU e GPU (il bus PCIe) è molto più stretta della ``porta'' verso le rispettive memorie locali. Con la UMA, CPU e GPU condividono lo stesso magazzino e la stessa porta, larga 819 GB/s.
+\end{notebox}
+Con la Unified Memory Architecture, questo collo di bottiglia scompare. Un tensore allocato in memoria è immediatamente accessibile sia dalla CPU che dalla GPU, senza alcuna copia (\textit{zero-copy}). Il bandwidth di 819 GB/s, 25 volte superiore a PCIe 4.0, è disponibile per \textit{tutti} i componenti simultaneamente.
+\paragraph{Superamento dei limiti della VRAM.}
+Il secondo vantaggio della UMA riguarda la capacità. Le GPU consumer più potenti (NVIDIA RTX 4090) dispongono di 24 GB di VRAM; le GPU professionali (NVIDIA A100) arrivano a 80 GB. Con 512 GB di memoria unificata, il Mac Studio può caricare modelli che eccederebbero la VRAM di qualsiasi GPU singola.
+Questo è particolarmente rilevante per i Large Language Models. DeepSeek-V3~\parencite{deepseekai2024deepseekv3}, con 671 miliardi di parametri, richiede circa 400 GB di memoria anche in formato quantizzato\footnote{La quantizzazione riduce la precisione dei pesi (ad esempio da 16 bit a 4 bit) per diminuire l'occupazione di memoria. Una trattazione dettagliata è riportata in Appendice~\ref{app:quantization}.}. Sul Mac Studio utilizzato, è possibile eseguire questo modello interamente in memoria, senza ricorrere a tecniche di \textit{offloading} su disco o a cluster multi-GPU, opzioni che introdurrebbero latenza significativa e complessità architetturale.
+\paragraph{Metal Performance Shaders (MPS).}
+PyTorch supporta l'accelerazione GPU su Apple Silicon attraverso il backend MPS (\texttt{torch.device("mps")}). Questo permette di sfruttare gli 80 core GPU del M3 Ultra per l'addestramento degli Sparse Autoencoder, ottenendo prestazioni significativamente superiori rispetto all'esecuzione su sola CPU.
+\paragraph{Requisiti di privacy: elaborazione locale dei dati clinici.}
+Oltre ai vantaggi prestazionali, la scelta di un'infrastruttura locale è stata dettata da un requisito non negoziabile: la \textbf{privacy dei dati}. Come anticipato, PRISMA è stato impiegato anche per l'analisi di cartelle cliniche pediatriche fornite da Pedianet che, sebbene anonimizzate, contengono informazioni sensibili non trasmissibili a servizi cloud esterni.
+L'utilizzo di API cloud per l'interpretazione delle feature, ad esempio inviando i testi attivanti a GPT-4~\parencite{openai2023gpt4} o Claude~\parencite{anthropic2024claude}, avrebbe comportato il trasferimento di dati clinici su server di terze parti, una pratica incompatibile con le normative sulla protezione dei dati sanitari e con i principi etici della ricerca medica. La disponibilità di 512 GB di memoria unificata ha permesso di eseguire \textit{localmente} modelli linguistici di grande scala, quali DeepSeek~\parencite{deepseekai2024deepseekv3}, Llama~\parencite{touvron2023llama} e Qwen~\parencite{bai2023qwen}, attraverso Ollama, garantendo che nessun dato clinico lasciasse mai la macchina.
+Questa configurazione, vale a dire un'elaborazione interamente on-premise con hardware sufficientemente potente da eseguire LLM di frontiera, rappresenta attualmente una soluzione rara nel panorama del deep learning, dove la maggior parte dei workflow assume l'accesso a risorse cloud. Il Mac Studio con M3 Ultra e 512 GB di memoria è una delle poche piattaforme consumer che rende possibile questo approccio.
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% SUBSECTION: ESTRAZIONE E ORGANIZZAZIONE DELLE FEATURE
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Estrazione e organizzazione delle feature}
+\label{subsec:feature_extraction_results}
+
+\subsubsection{Dataset e pipeline di embedding}
+\label{subsubsec:dataset_embedding}
+Il corpus utilizzato per gli esperimenti sul dominio scientifico è costituito da circa \textbf{2,5 milioni di abstract} estratti dal dataset \texttt{common-pile/arxiv\_abstracts}, disponibile pubblicamente su HuggingFace\footnote{\url{https://huggingface.co/datasets/common-pile/arxiv_abstracts}}. Il dataset copre l'intero spettro disciplinare di arXiv, dalla fisica teorica all'informatica, dalla matematica alla biologia quantitativa, offrendo un banco di prova ideale per valutare la capacità dei SAE di estrarre strutture semantiche da un dominio ad alta diversità concettuale.
+
+Ciascun abstract è stato trasformato in un vettore denso di dimensione $d = 384$ tramite il modello \texttt{sentence-transformers/all-MiniLM-L6-v2}\footnote{\url{https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2}}, un sentence encoder leggero basato su MiniLM~\parencite{wang2020minilm} che produce embedding ottimizzati per la similarità semantica a livello di frase. La scelta di questo modello, rispetto a encoder più pesanti come BERT-large~\parencite{devlin2018bert}, è motivata dal trade-off favorevole tra qualità delle rappresentazioni e costo computazionale: con 22 milioni di parametri e una dimensione di embedding di 384, \texttt{all-MiniLM-L6-v2} consente di processare milioni di documenti in tempi ragionevoli mantenendo prestazioni competitive sui benchmark di sentence similarity.
+
+\subsubsection{Interpretazione automatica delle feature}
+\label{subsubsec:feature_interpretation}
+Lo Sparse Autoencoder addestrato sugli embedding del corpus arXiv ha prodotto uno spazio latente con migliaia di direzioni attive. Per rendere queste direzioni semanticamente leggibili, si è proceduto all'interpretazione automatica tramite un LLM locale, secondo la metodologia descritta nel Paragrafo~\ref{subsubsec:llm_interpreter}.
+
+Il modello utilizzato come interprete è \textbf{Gemma 3 27B}\footnote{\url{https://ollama.com/library/gemma3:27b}}, eseguito localmente tramite Ollama sulla macchina descritta nel Paragrafo~\ref{subsec:setup}. Per ciascuna feature, l'interprete ha ricevuto in input i testi con le attivazioni più alte (\textit{top activating contexts}) e i contro-esempi, producendo un'etichetta semantica in linguaggio naturale. Complessivamente, sono state interpretate con successo più di \textbf{4.000 feature}, ciascuna associata a una descrizione testuale del concetto che la direzione latente codifica.
+
+Il processo di interpretazione su larga scala, vale a dire oltre 4.000 feature ciascuna richiedente un prompt con più esempi e una generazione di testo, ha beneficiato significativamente dei 512~GB di memoria unificata del Mac Studio, che hanno permesso di mantenere il modello da 27 miliardi di parametri interamente in memoria durante l'intera sessione di labelling.
+
+\subsubsection{Esempio: Feature 5648 --- \textit{Time in physics}}
+\label{subsubsec:feature_example}
+Per illustrare concretamente il tipo di struttura estratta dal SAE, si esamini la \textbf{Feature 5648} del modello SAE \#10 (Figura~\ref{fig:feature_5648}). L'interprete Gemma 3 ha assegnato a questa feature la seguente etichetta semantica:
+
+\begin{quote}
+\textit{``The concept of time, time symmetry, or time-related phenomena in quantum or classical mechanics.''}
+\end{quote}
+
+\paragraph{Statistiche di attivazione.}
+La feature presenta una \textbf{densità} di 0.155, indicando che si attiva su circa il 15,5\% dei documenti del corpus, un valore coerente con la pervasività del concetto di tempo nella letteratura fisica. L'\textbf{attivazione di picco} è 25.11, osservata su abstract che trattano esplicitamente la natura del tempo in meccanica quantistica.
+
+\paragraph{Top activating contexts.}
+I documenti che massimizzano l'attivazione della feature confermano la coerenza dell'interpretazione:
+
+\begin{table}[htbp]
+    \centering
+    \caption{Top activating contexts per la Feature 5648 (\textit{Time in physics}).}
+    \label{tab:feature_5648_top}
+    \begin{tabular}{@{}clr@{}}
+        \toprule
+        \textbf{Doc ID} & \textbf{Abstract (estratto)} & \textbf{Attivazione} \\
+        \midrule
+        2468516 & \textit{The concept of time as used in various applications} & 25.11 \\
+                & \textit{and interpretations of quantum theory [\ldots]} & \\
+        2468702 & \textit{A review of new aspects concerning time-symmetry} & 24.53 \\
+                & \textit{in Quantum Mechanics.} & \\
+        2574846 & \textit{We examine how time ordering works in quantum} & 24.41 \\
+                & \textit{mechanics and in classical mechanics.} & \\
+        1177920 & \textit{Timekeeping is a fundamental component of modern} & 19.84 \\
+                & \textit{computing [\ldots] security of system time [\ldots]} & \\
+        2455750 & \textit{A very brief and popular account of the time} & 19.63 \\
+                & \textit{machine problem.} & \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+Si noti il gradiente di attivazione: i tre documenti con attivazione più alta ($>24$) trattano specificamente il tempo come concetto fondamentale in meccanica quantistica e classica. I documenti con attivazione più bassa ($\sim$19--20) riguardano il tempo in contesti adiacenti ma meno centrali, vale a dire la sicurezza del system time nei sistemi informatici e il problema divulgativo delle macchine del tempo. Questo gradiente mostra che la feature non è un semplice classificatore binario, ma codifica un \textit{grado di rilevanza} continuo rispetto al concetto.
+
+\paragraph{Topologia e famiglia semantica.}
+La Feature 5648 risulta essere la \textbf{radice} della \textbf{Famiglia \#10034}, una famiglia che raggruppa 47 feature children tra cui:
+
+\begin{itemize}
+    \item \textit{Time Reversal Symmetry} (\#2612)
+    \item \textit{Event Modeling} (\#515)
+    \item \textit{Sleep Studies} (\#3815)
+    \item \textit{Video Analysis} (\#2731)
+    \item \textit{Streaming Algorithms} (\#2138)
+\end{itemize}
+
+La struttura è coerente con la topologia a stella tipica delle feature families: il parent \textit{Time in physics} rappresenta il concetto temporale nella sua accezione più generale, mentre i children catturano specializzazioni, dalla simmetria temporale in fisica alle applicazioni computazionali che coinvolgono la dimensione temporale (streaming, video, modellazione di eventi).
+
+\paragraph{Correlazioni.}
+Le correlazioni nello spazio dei pesi (\textit{weight-space}, similarità tra vettori decoder) e nello spazio dei dati (\textit{co-attivazione}) offrono ulteriori conferme della coerenza semantica. Si ricordi che la matrice $S$ cattura la similarità geometrica tra le colonne del decoder, vale a dire feature che ``puntano'' in direzioni simili nello spazio degli embedding, mentre la matrice $D$ misura la co-occorrenza statistica sugli stessi documenti:
+
+\begin{table}[htbp]
+    \centering
+    \caption{Correlazioni della Feature 5648 nello spazio dei pesi (S) e dei dati (D).}
+    \label{tab:feature_5648_corr}
+    \begin{tabular}{@{}llr@{}}
+        \toprule
+        \textbf{Tipo} & \textbf{Feature correlata} & \textbf{Correlazione} \\
+        \midrule
+        S & Mathematical Graph Theory & 0.21 \\
+        S & Operator Theory & 0.20 \\
+        S & Polynomial Time Algorithm & 0.18 \\
+        S & Period Mappings & 0.18 \\
+        \midrule
+        D & Zero Modes & 0.23 \\
+        D & Mathematical or Physics Research & 0.18 \\
+        D & Quantum Mechanics & 0.17 \\
+        D & Quantum Gravity & 0.15 \\
+        D & Hadron Physics & 0.15 \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+Le correlazioni di co-attivazione (D) sono particolarmente informative: la feature \textit{Time in physics} tende a co-attivarsi con \textit{Quantum Mechanics}, \textit{Quantum Gravity} e \textit{Hadron Physics}, vale a dire esattamente le aree della fisica in cui il concetto di tempo ha un ruolo fondamentale. La correlazione con \textit{Zero Modes} riflette la connessione tra simmetrie temporali e modi zero nelle teorie di gauge. Le correlazioni nello spazio dei pesi (S), invece, rivelano prossimità geometriche nel decoder con feature di natura più matematica (\textit{Operator Theory}, \textit{Graph Theory}), suggerendo che il SAE ha appreso una regione dello spazio latente dove strutture temporali e strutture algebriche astratte condividono direzioni simili.
+
+\subsubsection{Esempio: Feature 1140 --- \textit{Ising model}}
+\label{subsubsec:feature_example_ising}
+Come secondo esempio, si consideri la \textbf{Feature 1140}, che illustra un caso complementare rispetto alla precedente: una feature altamente \textit{specifica}, con densità molto bassa e semantica circoscritta a un singolo modello teorico. L'interprete Gemma 3 ha prodotto l'etichetta:
+
+\begin{quote}
+\textit{``Two-dimensional Ising model statistical physics.''}
+\end{quote}
+
+\paragraph{Statistiche di attivazione.}
+La densità di questa feature è \textbf{0.00772}, quasi venti volte inferiore a quella della Feature 5648. Ciò significa che la feature si attiva su meno dell'1\% del corpus, coerentemente con il fatto che il modello di Ising bidimensionale è un argomento di nicchia anche all'interno della fisica teorica. L'attivazione di picco è 24.68, comparabile a quella della Feature 5648, indicando che quando la feature si attiva lo fa con intensità elevata: il SAE ha appreso una direzione latente \textit{stretta ma profonda}.
+
+\paragraph{Top activating contexts.}
+I documenti con attivazione massima confermano la specificità dell'interpretazione:
+
+\begin{table}[htbp]
+    \centering
+    \caption{Top activating contexts per la Feature 1140 (\textit{Ising model}).}
+    \label{tab:feature_1140_top}
+    \begin{tabular}{@{}clr@{}}
+        \toprule
+        \textbf{Doc ID} & \textbf{Abstract (estratto)} & \textbf{Attivazione} \\
+        \midrule
+        479389  & \textit{One more solution of 2D Ising model is found} & 24.68 \\
+        382080  & \textit{We show that the center of mass of Ising vectors} & 16.58 \\
+                & \textit{that obey some simple constraints [\ldots]} & \\
+        2315193 & \textit{The partition function and magnetization equations} & 14.58 \\
+                & \textit{are derived for the 2D nearest neighbour Ising models [\ldots]} & \\
+        1597255 & \textit{The correlation functions of the Z-invariant Ising} & 13.95 \\
+                & \textit{model [\ldots] Vertex Operators language [\ldots]} & \\
+        481058  & \textit{The partition function of 2D nearest neighbour Ising} & 13.79 \\
+                & \textit{models in a non-zero magnetic field [\ldots]} & \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+A differenza della Feature 5648, qui il gradiente di attivazione è più ripido: il documento di picco (24.68) è seguito da un salto a 16.58, poi valori compressi tra 13 e 15. Questo profilo è tipico delle feature \textit{monosemantiche strette}: il concetto codificato è sufficientemente specifico da generare un'attivazione massima solo quando l'abstract riguarda \textit{esattamente} il modello di Ising 2D, con decadimento rapido per trattazioni tangenziali.
+
+\paragraph{Topologia e famiglia semantica.}
+A differenza della Feature 5648, che è la radice di una famiglia, la Feature 1140 è un \textbf{child} della Feature \#1734 (\textit{Zero Modes}). Questa relazione gerarchica è fisicamente sensata: i modi zero emergono naturalmente nello studio delle transizioni di fase del modello di Ising, in particolare in connessione con la simmetria $\mathbb{Z}_2$ e i modi di Goldstone.
+
+\paragraph{Correlazioni.}
+\begin{table}[htbp]
+    \centering
+    \caption{Correlazioni della Feature 1140 nello spazio dei pesi (S) e dei dati (D).}
+    \label{tab:feature_1140_corr}
+    \begin{tabular}{@{}llr@{}}
+        \toprule
+        \textbf{Tipo} & \textbf{Feature correlata} & \textbf{Correlazione} \\
+        \midrule
+        S & Baryon/Boson Spectroscopy & 0.54 \\
+        S & Wasserstein Distance & 0.35 \\
+        S & Amenability & 0.33 \\
+        S & Besov Spaces & 0.33 \\
+        S & Black Hole Entropy and Thermodynamics & 0.29 \\
+        \midrule
+        D & Zero Modes & 0.42 \\
+        D & Quantum Spin & 0.38 \\
+        D & Phase Transitions & 0.33 \\
+        D & Thermal Physics & 0.33 \\
+        D & Quantum Mechanics & 0.32 \\
+        D & Magnetic Fields and Materials & 0.31 \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+Le correlazioni di co-attivazione (D) disegnano una mappa concettuale notevolmente precisa del modello di Ising: \textit{Quantum Spin}, \textit{Phase Transitions}, \textit{Thermal Physics} e \textit{Magnetic Fields and Materials} sono esattamente i pilastri concettuali su cui si fonda il modello, vale a dire spin discreti su reticolo, transizioni di fase ferromagnetiche, termodinamica statistica, interazioni magnetiche. La correlazione più alta con \textit{Zero Modes} (0.42) è coerente con la relazione parent-child nella topologia delle famiglie.
+
+Le correlazioni nello spazio dei pesi (S) rivelano una struttura più sorprendente: la correlazione elevata con \textit{Baryon/Boson Spectroscopy} (0.54) suggerisce che il decoder ha appreso una prossimità geometrica tra il modello di Ising e la spettroscopia delle particelle, due domini apparentemente distanti ma accomunati dal formalismo della meccanica statistica e delle teorie di campo su reticolo.
+
+La Feature 5648 è un concetto \textit{parent}, ampio, pervasivo, radice di una famiglia estesa, mentre la Feature 1140 è un concetto \textit{child}, specifico, raro, subordinato a un parent. Entrambe, tuttavia, mostrano attivazioni di picco comparabili ($\sim$25), indicando che il SAE assegna intensità elevata sia a concetti generali sia a concetti specifici quando l'input è altamente pertinente. Questa capacità di operare simultaneamente a livelli di granularità diversi, dal macro-concetto alla sotto-specializzazione, è una proprietà centrale della rappresentazione sparsa overcomplete.
+
+\subsubsection{Feature families nel dominio scientifico}
+\label{subsubsec:scientific_features}
+Gli esempi delle Feature 5648 e 1140 sono rappresentativi di un pattern più generale. L'algoritmo di clustering gerarchico descritto nel Paragrafo~\ref{subsubsec:feature_families}, applicato alle oltre 4.000 feature interpretate, ha identificato \textbf{590 feature families}. Ciascuna famiglia è organizzata attorno a un \textbf{parent}, una feature a semantica ampia che funge da radice, e un insieme di \textbf{children}, feature più specifiche che ne rappresentano specializzazioni concettuali.
+
+\paragraph{Caso di studio: Famiglia \#10034 --- \textit{Time in physics}.}
+La Famiglia \#10034, il cui parent è la Feature 5648 (\textit{Time in physics}), offre un esempio paradigmatico di questa organizzazione. Come mostrato nella Figura~\ref{fig:time_physics_list}, la famiglia raggruppa 47 children che coprono un ventaglio di specializzazioni del concetto di tempo: dalla \textit{Time Reversal Symmetry} (\#2612) alla \textit{Special Relativity} (\#4811), dai \textit{Quantum Clocks} (\#4456) alle \textit{Particle Lifetimes} (\#914), fino ad applicazioni computazionali come gli \textit{Streaming Algorithms} (\#2138) e la \textit{Sliding Window Analysis} (\#2970). Compaiono anche specializzazioni inattese ma semanticamente coerenti: \textit{Option Pricing} (\#2639), dove il tempo è la variabile fondamentale nei modelli di Black-Scholes, e \textit{Biological Aging} (\#5060), dove il tempo è l'asse lungo cui si misurano i processi di senescenza.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\textwidth]{pictures/cap6/time_in_physics_list.png}
+    \caption{Famiglia \#10034 (\textit{Time in physics}): lista completa dei 47 children nodes. Ogni chip riporta l'etichetta semantica e l'indice della feature. Si noti la diversità disciplinare dei children, dalla fisica fondamentale (\textit{Special Relativity}, \textit{Quantum Clocks}) alla matematica applicata (\textit{Renewal Theory}, \textit{Diffusion Equations}) fino a domini applicativi (\textit{Option Pricing}, \textit{Scheduling Algorithms}), tutti accomunati dalla centralità del concetto di tempo.}
+    \label{fig:time_physics_list}
+\end{figure}
+
+La Figura~\ref{fig:time_physics_graph} mostra la stessa famiglia nella visualizzazione a grafo dell'Explorer di PRISMA. La topologia a stella è immediatamente riconoscibile: il nodo centrale azzurro (\textit{Time in physics}) irradia connessioni verso i children (nodi viola), che a loro volta possono essere connessi a feature di famiglie adiacenti (\textit{Quantum States}, \textit{Cosmic Dust}, \textit{Algebraic Structures}, ecc.), creando un tessuto di relazioni inter-famiglia che riflette la struttura interdisciplinare della ricerca scientifica.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\textwidth]{pictures/cap6/time_in_physics_graph.png}
+    \caption{Visualizzazione a grafo della Famiglia \#10034 nell'Explorer di PRISMA. Il nodo centrale azzurro è il parent \textit{Time in physics}; i nodi viola sono i children e le feature correlate di famiglie adiacenti. La topologia a stella, tipica delle feature families, emerge chiaramente: il parent funge da nodo concettuale centrale, mentre i children raramente sono connessi direttamente tra loro.}
+    \label{fig:time_physics_graph}
+\end{figure}
+
+\subsubsection{Le 590 famiglie come assi di una rappresentazione}
+\label{subsubsec:families_as_axes}
+L'analisi delle 590 famiglie rivela che la struttura a stella osservata per \textit{Time in physics} non è un caso isolato, ma un pattern ricorrente. Le famiglie mappano in modo coerente le aree disciplinari e le metodologie della ricerca scientifica, dai sottocampi del machine learning alla fisica delle particelle. Questi risultati sono consistenti con quelli riportati in~\parencite{oneill2024disentangling}, confermando che la metodologia degli Sparse Autoencoder produce feature semanticamente interpretabili anche quando applicata con modelli di embedding e infrastrutture diverse.
+L'esistenza di 590 feature families suggerisce una prospettiva interessante. Se ciascuna famiglia cattura un asse concettuale distinto, come \textit{tempo}, \textit{modello di Ising}, \textit{sintomi respiratori} o \textit{ottimizzazione}, allora le 590 famiglie potrebbero potenzialmente essere considerate come gli \textbf{assi indipendenti} di una rappresentazione semantica compressa. In questa lettura, il SAE non si limiterebbe a estrarre feature isolate, ma rivelerebbe una \textit{base concettuale} del dominio: un insieme di direzioni semantiche lungo le quali varia il contenuto del corpus.
+Tuttavia, questa interpretazione solleva una domanda quantitativa: le 590 famiglie sono davvero indipendenti? O esistono correlazioni residue tra famiglie, ad esempio la famiglia \textit{Thermal Physics} potrebbe co-attivarsi sistematicamente con la famiglia \textit{Phase Transitions}, che riducono i gradi di libertà effettivi al di sotto di 590? In altri termini: qual è la \textbf{dimensionalità effettiva} dello spazio semantico estratto dal SAE? Per rispondere a questa domanda, il paragrafo successivo introduce un'analisi quantitativa basata sull'Effective Rank.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% SUBSECTION: ANALISI DELL'EFFECTIVE RANK
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Analisi dell'Effective Rank}
+\label{subsec:effective_rank_results}
+
+Nel Paragrafo~\ref{subsubsec:effective_rank} è stato introdotto l'Effective Rank come metrica per quantificare la dimensionalità effettiva dello spazio delle attivazioni. In questo paragrafo saranno presentati i risultati sperimentali ottenuti sul dataset di 50.000 abstract\footnote{Dataset \texttt{batterydata/paper-abstracts}, disponibile su HuggingFace: \url{https://huggingface.co/datasets/batterydata/paper-abstracts}.}, variando sistematicamente l'expansion factor $\rho$.
+
+\subsubsection{Setup sperimentale}
+\label{subsubsec:er_setup}
+
+Per ogni valore di expansion factor $\rho \in \{0.125, 1, 2, 3, 4, 6.5, 13, 26, 52, 64\}$, sono stati addestrati due Sparse Autoencoder:
+
+\begin{enumerate}
+    \item \textbf{SAE su dati reali}: addestrato sugli embedding dei 50.000 abstract
+    \item \textbf{SAE su dati casuali} (ipotesi nulla): addestrato su vettori generati uniformemente in $\mathbb{R}^d$, privi di struttura semantica
+\end{enumerate}
+
+Per ciascun SAE è stata calcolata la matrice di attivazione $H \in \mathbb{R}^{N \times n}$ e il corrispondente Effective Rank secondo l'Eq.~\ref{eq:effective_rank}. Il confronto tra le due condizioni permette di isolare il contributo della struttura semantica alla compressione delle rappresentazioni.
+
+\subsubsection{Il problema del limite degli autovalori}
+\label{subsubsec:eigenvalue_limit}
+
+Il calcolo dell'Effective Rank richiede la decomposizione ai valori singolari (SVD) della matrice $H$. Il numero massimo di valori singolari non nulli è limitato da $\min(N, n)$, dove $N$ è il numero di documenti e $n$ la dimensionalità dello spazio latente.
+
+Nel setup utilizzato, con $N = 50.000$ documenti e embedding di dimensione $d = 768$, per expansion factor elevati ($\rho > 13$) la dimensionalità latente $n = \rho \cdot d$ supera $N$. In questo regime, l'Effective Rank non può superare $N$, indipendentemente dalla struttura intrinseca dei dati.
+
+Questo fenomeno è documentato nella letteratura sull'Effective Rank in~\parencite{roy2007effective}: quando il numero di campioni è inferiore alla dimensionalità, la matrice è \textit{rank-deficient} e l'entropia dello spettro singolare satura al valore $\log(\min(N,n))$.
+
+Per verificare empiricamente questo effetto, sono state condotte due serie di esperimenti:
+
+\begin{enumerate}
+    \item \textbf{Limite a 10.000 autovalori}: SVD troncata ai primi 10.000 valori singolari
+    \item \textbf{Limite a 40.000 autovalori}: SVD troncata ai primi 40.000 valori singolari
+\end{enumerate}
+
+\subsubsection{Risultati: Effective Rank ed expansion factor}
+\label{subsubsec:er_results}
+
+La Figura~\ref{fig:er_10000} mostra i risultati con limite a 10.000 autovalori. È possibile osservare che:
+
+\begin{itemize}
+    \item L'Effective Rank su dati casuali (curva arancione) cresce quasi linearmente con l'expansion factor, come atteso per dati privi di struttura
+    \item L'Effective Rank su dati reali (curva blu) cresce più lentamente, evidenziando la compressione dovuta alla struttura semantica
+    \item Entrambe le curve raggiungono un \textbf{plateau} intorno a 8.000--10.000, corrispondente al limite artificiale imposto dalla SVD troncata
+    \item Il Semantic Compression Ratio (SCR) cresce fino a circa il 37\%, poi \textbf{decresce} quando entrambe le curve saturano al limite
+\end{itemize}
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\textwidth]{pictures/cap6/erank_ds11_ksing10000_ksparse16_analysis_1.png}
+    \caption{Effective Rank in funzione dell'expansion factor, con limite a 10.000 autovalori. \textbf{Sopra}: confronto tra dati reali (blu) e ipotesi nulla (arancione). Il plateau oltre $\rho \approx 26$ è un artefatto del limite computazionale. \textbf{Sotto}: Semantic Compression Ratio. Il calo dopo il picco è dovuto alla saturazione di entrambe le curve al limite degli autovalori, non a una reale diminuzione della compressione semantica.}
+    \label{fig:er_10000}
+\end{figure}
+
+La Figura~\ref{fig:er_40000} mostra i risultati con limite esteso a 40.000 autovalori. I risultati sono qualitativamente diversi:
+
+\begin{itemize}
+    \item Il plateau scompare: l'Effective Rank continua a crescere per entrambe le condizioni
+    \item Il gap tra dati reali e casuali \textbf{aumenta} con l'expansion factor
+    \item Il Semantic Compression Ratio cresce \textbf{monotonicamente}, raggiungendo il 59,9\% per $\rho = 64$
+\end{itemize}
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\textwidth]{pictures/cap6/erank_ds11_ksing40000_ksparse16_analysis_1.png}
+    \caption{Effective Rank in funzione dell'expansion factor, con limite a 40.000 autovalori. \textbf{Sopra}: senza il limite artificiale, l'Effective Rank continua a crescere. Il gap tra le due condizioni aumenta progressivamente. \textbf{Sotto}: il Semantic Compression Ratio cresce monotonicamente fino al 59,9\%, indicando che la struttura semantica comprime sempre più le rappresentazioni all'aumentare della capacità.}
+    \label{fig:er_40000}
+\end{figure}
+
+\subsubsection{Interpretazione dei risultati}
+\label{subsubsec:er_interpretation}
+I risultati dell'analisi dell'Effective Rank supportano due conclusioni principali.
+\paragraph{La struttura semantica comprime le rappresentazioni.}
+Il gap persistente tra dati reali e casuali, quantificato dal Semantic Compression Ratio, dimostra che i dati linguistici reali occupano una varietà di dimensionalità inferiore rispetto a dati casuali nella stessa configurazione architettonica. Questa compressione non è un artefatto del vincolo Top-K (presente in entrambe le condizioni), ma riflette le correlazioni intrinseche del dominio semantico: concetti correlati (febbre $\leftrightarrow$ infezione, gradiente $\leftrightarrow$ ottimizzazione) tendono a co-attivarsi, riducendo la dimensionalità effettiva.
+\paragraph{L'SCR crescente è consistente con il feature splitting.}
+L'aumento monotono del Semantic Compression Ratio con l'expansion factor (Figura~\ref{fig:er_40000}) è coerente con il fenomeno del feature splitting descritto nel Paragrafo~\ref{subsubsec:feature_splitting}. All'aumentare della capacità, le feature generali si scindono in sotto-feature più specifiche. Queste sotto-feature, pur essendo distinte, rimangono tuttavia \textit{correlate}: appartengono alla stessa famiglia semantica, si attivano su sottoinsiemi sovrapposti di documenti, e le loro direzioni decoder formano angoli non ortogonali.
+In altri termini: il feature splitting aumenta il numero di feature \textit{nominali} ($n$), ma non aumenta proporzionalmente la dimensionalità \textit{effettiva} (ER). Le nuove feature emergenti non sono indipendenti dalle precedenti, bensì loro specializzazioni. Questo spiega perché l'SCR \textit{aumenta} con l'expansion factor: più feature, ma meno indipendenza relativa.
+\begin{notebox}
+\textbf{Il paradosso della capacità, rivisitato}\\[0.5em]
+Nel Paragrafo~\ref{sec:04_disentangling_dense_embeddings_with_sparse_autoencoders} è stato introdotto il paradosso della capacità: come può un modello come BERT~\parencite{devlin2018bert} rappresentare decine di migliaia di concetti con soli 768 neuroni?
+L'analisi dell'Effective Rank suggerisce una risposta parziale: quei concetti non sono \textit{indipendenti}. La struttura semantica del linguaggio, vale a dire le relazioni tassonomiche, le co-occorrenze, le analogie, introduce correlazioni che permettono di comprimere molti concetti in poche dimensioni effettive.
+Lo Sparse Autoencoder non elimina queste correlazioni: le rende \textit{esplicite}, mappandole in famiglie e gerarchie interpretabili.
+\end{notebox}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% SUBSECTION: SVILUPPI FUTURI
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Sviluppi futuri: verso gli invarianti semantici}
+\label{subsec:sviluppi_futuri}
+
+Il lavoro presentato in questa tesi ha dimostrato che uno Sparse Autoencoder può proiettare le rappresentazioni dense di un modello di embedding in una nuova rappresentazione, sparsa, ad alta dimensionalità e interpretabile, in cui ogni direzione attiva corrisponde a un concetto identificabile. Le feature estratte si organizzano spontaneamente in famiglie gerarchiche, e l'analisi dell'Effective Rank mostra che la struttura semantica comprime queste rappresentazioni in modo sistematico e quantificabile.
+
+Ma questa proiezione apre una domanda che va oltre gli obiettivi tecnici del presente lavoro: \textit{PRISMA traduce da una rappresentazione a un'altra. Qual è quella ``vera''?}
+
+\subsubsection{Le ombre sulla parete}
+\label{subsubsec:ombre_caverna}
+Nel Mito della Caverna, Platone descrive prigionieri incatenati che osservano ombre proiettate su una parete e le scambiano per la realtà. Le ombre sono \textit{proiezioni} di oggetti reali, coerenti, strutturate, predittive, ma non sono gli oggetti stessi.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.85\textwidth]{pictures/cap6/mito_caverna.jpeg}
+    \caption{Mito della Caverna di Platone. Un uomo proietta l'ombra di un uccello su una parete; il prigioniero incatenato osserva l'ombra e la scambia per la realtà. La proiezione è coerente, l'ombra ha la forma di un uccello, ma è una riduzione dell'oggetto originale. Nel contesto del presente lavoro, ogni rappresentazione del significato (densa, sparsa, umana) è un'ombra sulla parete: una proiezione strutturata ma parziale di una realtà semantica sottostante.}
+    \label{fig:caverna_platone}
+\end{figure}
+
+Nel contesto del presente lavoro, ogni rappresentazione del significato può essere vista come un'ombra sulla parete:
+
+\begin{itemize}
+    \item La \textbf{rappresentazione densa} (gli embedding di MiniLM~\parencite{wang2020minilm}, BERT~\parencite{devlin2018bert}, o qualsiasi altro modello) codifica il significato in vettori $\mathbb{R}^d$ dove ogni dimensione è attiva ma nessuna è interpretabile isolatamente. Il significato emerge dalla combinazione di tutte le dimensioni.
+    \item La \textbf{rappresentazione sparsa} (le attivazioni del SAE) codifica lo stesso significato in vettori $\mathbb{R}^n$ dove poche dimensioni sono attive, ciascuna corrispondente a un concetto interpretabile. È la proiezione su cui PRISMA si concentra.
+    \item La \textbf{rappresentazione umana}, vale a dire la struttura concettuale con cui viene organizzato il significato, accessibile indirettamente tramite giudizi di similarità, tempi di reazione, errori di memoria e strutture linguistiche, è un'altra proiezione ancora.
+\end{itemize}
+
+Tre proiezioni. Tre ombre diverse sulla parete. Ma se preservano le stesse relazioni, se ``re meno uomo più donna uguale regina'' vale nello spazio denso, nello spazio sparso e nella mente umana, allora la domanda diventa: \textit{cosa c'è fuori dalla caverna?}
+
+%%%%%%%%%%%%%%%%%%%%
+\subsubsection{La lezione della fisica: non esiste un sistema privilegiato}
+\label{subsubsec:lezione_fisica}
+La fisica ha affrontato una domanda strutturalmente identica a quella posta alla fine del paragrafo precedente, e la risposta che ha trovato è istruttiva.
+\subsubsection{L'etere e la ricerca di un riferimento assoluto}
+\label{subsubsec:etere}
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.6\textwidth]{pictures/cap6/Michelson_Interferometer_Red_Laser_Interference.jpg}
+    \caption{Interferenza prodotta da un raggio luminoso rosso con l'esperimento di Michelson-Morley. L'esperimento dimostrò l'indipendenza della velocità della luce rispetto all'ipotetico vento d'etere e costituì la prima forte prova contro la teoria dell'etere luminifero. Eseguito nel 1887 nell'attuale Case Western Reserve University, è considerato uno dei più famosi e importanti esperimenti della storia della fisica.}
+    \label{fig:mm_experiment}
+\end{figure}
+Per gran parte dell'Ottocento, i fisici cercavano l'\textit{etere luminifero}: un mezzo materiale che pervadeva tutto lo spazio e attraverso il quale si propagavano le onde elettromagnetiche. L'etere non era solo un'ipotesi sulla natura della luce: era, implicitamente, un \textbf{sistema di riferimento assoluto}, vale a dire il sistema ``a riposo'' rispetto al quale misurare il moto ``vero'' di tutti gli altri corpi.
+Se l'etere esisteva, allora esisteva un modo privilegiato di descrivere la realtà, quello dell'osservatore fermo rispetto all'etere.
+L'esperimento di Michelson e Morley (1887) cercò di misurare il moto della Terra rispetto a questo riferimento assoluto, e non trovò nulla. La velocità della luce risultava identica in tutte le direzioni, indipendentemente dal moto dell'osservatore. L'etere, semplicemente, non c'era.
+\subsubsection{Il capovolgimento di Einstein}
+\label{subsubsec:capovolgimento_einstein}
+Einstein non risolse il problema dell'etere: lo dissolse. Anziché cercare il riferimento giusto, postulò che \textbf{non ne esiste uno privilegiato}: tutti i sistemi di riferimento inerziali sono equivalenti, e le leggi della fisica assumono la stessa forma in ciascuno di essi.
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.6\textwidth]{pictures/cap6/einstein.jpeg}
+    \caption{Albert Einstein (1879--1955). Con la Relatività Ristretta (1905), Einstein capovolse la domanda sul moto assoluto: anziché cercare un sistema di riferimento privilegiato, mostrò che le leggi della fisica sono le stesse in tutti i sistemi inerziali. La realtà fisica non risiede in un riferimento particolare, ma negli \textbf{invarianti}, vale a dire le quantità che si preservano passando da un riferimento all'altro.}
+    \label{fig:einstein}
+\end{figure}
+Ma se nessun sistema di riferimento è speciale, cosa è ``reale''? La risposta di Einstein fu precisa: sono reali gli \textbf{invarianti}, le quantità che restano identiche indipendentemente dal sistema di riferimento scelto. L'intervallo spaziotemporale $ds^2 = c^2\, dt^2 - dx^2 - dy^2 - dz^2$ cambia nelle sue componenti ($dt$, $dx$, $dy$, $dz$) quando si passa da un osservatore all'altro, ma la combinazione $ds^2$ resta la stessa. Lo spazio e il tempo, presi separatamente, sono relativi all'osservatore, come ombre sulla parete. L'intervallo $ds^2$, che li lega insieme, è l'oggetto fuori dalla caverna.
+\subsubsection{Tre formulazioni, una sola fisica}
+\label{subsubsec:tre_formulazioni}
+La stessa lezione emerge in un contesto meno radicale ma altrettanto illuminante: le formulazioni della meccanica classica. Newton descrive il moto con forze e accelerazioni ($\vec{F} = m\vec{a}$); Lagrange riformula lo stesso contenuto fisico attraverso il principio di minima azione $S = \int_{t_1}^{t_2} L\, dt$; Hamilton introduce lo spazio delle fasi con posizione e momento coniugato $(q, p)$. Tre linguaggi matematici diversi. Tre ``rappresentazioni'' dello stesso sistema fisico. Una sola fisica.
+Un sistema massa-molla, ad esempio, può essere descritto equivalentemente come:
+\begin{itemize}
+    \item Un'equazione differenziale: $m\ddot{x} = -kx$ \hfill (Newton)
+    \item Un principio variazionale: $\delta \int \left(\tfrac{1}{2}m\dot{x}^2 - \tfrac{1}{2}kx^2\right) dt = 0$ \hfill (Lagrange)
+    \item Un flusso nello spazio delle fasi: $\dot{q} = \tfrac{\partial H}{\partial p},\; \dot{p} = -\tfrac{\partial H}{\partial q}$ \hfill (Hamilton)
+\end{itemize}
+Nessuna di queste formulazioni è ``quella vera''. Le leggi vere sono quelle che si preservano nel passaggio da una formulazione all'altra: la frequenza di oscillazione $\omega = \sqrt{k/m}$, l'energia conservata, la periodicità del moto.
+\subsubsection{Applicazione al dominio del significato}
+\label{subsubsec:applicazione_significato}
+Il parallelo con il problema delle rappresentazioni semantiche è diretto. La rappresentazione densa (embedding), la rappresentazione sparsa (attivazioni SAE) e la rappresentazione umana (struttura concettuale) sono tre ``formulazioni'' dello stesso oggetto, vale a dire il significato. Chiedersi quale sia quella vera è come chiedersi se la meccanica ``vera'' sia quella di Newton o quella di Lagrange: la domanda è mal posta.
+La domanda corretta, suggerita dalla lezione della fisica, è un'altra:
+\begin{quote}
+\textit{Esistono invarianti semantici che si preservano attraverso tutte le rappresentazioni del significato? Se sì, questi invarianti, e non le rappresentazioni, sono le leggi fondamentali del significato.}
+\end{quote}
+
+\subsubsection{La Platonic Representation Hypothesis}
+\label{subsubsec:platonic_rep}
+La direzione di ricerca delineata nel paragrafo precedente, vale a dire cercare invarianti anziché rappresentazioni privilegiate, trova un supporto empirico significativo in un recente position paper presentato a ICML 2024.
+In~\parencite{huh2024platonic} viene formulata la \textit{Platonic Representation Hypothesis}: reti neurali diverse, addestrate con obiettivi diversi su dati e modalità diverse, stanno convergendo verso un \textbf{modello statistico condiviso della realtà} nei loro spazi di rappresentazione.
+L'intuizione è quella illustrata in Figura~\ref{fig:platonic_rep}: il mondo reale ($Z$) può essere osservato attraverso modalità diverse, un'immagine ($X$), una descrizione testuale ($Y$), un suono, un'equazione. Ciascuna modalità è una proiezione parziale della stessa realtà sottostante, esattamente come le ombre sulla parete della caverna platonica. La tesi proposta in~\parencite{huh2024platonic} è che gli algoritmi di rappresentazione, quando diventano sufficientemente potenti, recuperano la struttura condivisa che sta \textit{dietro} a tutte queste proiezioni.
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.65\textwidth]{pictures/cap6/platonic_rep_less_space_v2.jpg}
+    \caption{La Platonic Representation Hypothesis, da~\parencite{huh2024platonic}. La realtà sottostante ($Z$), qui una sfera rossa accanto a un cono blu, genera proiezioni in modalità diverse: un'immagine ($X$) e una descrizione testuale ($Y$). Due encoder indipendenti, $f_{\text{img}}$ e $f_{\text{text}}$, trasformano queste proiezioni in rappresentazioni vettoriali. L'ipotesi è che, all'aumentare della scala e della generalità dei modelli, queste rappresentazioni convergano verso la stessa struttura, vale a dire il modello statistico della realtà $Z$.}
+    \label{fig:platonic_rep}
+\end{figure}
+
+\subsubsection{Le evidenze}
+\label{subsubsec:evidenze}
+Le evidenze riportate in~\parencite{huh2024platonic} operano su tre livelli di convergenza:
+
+\begin{enumerate}
+    \item \textbf{Convergenza intra-modale.} Analizzando 78 modelli di visione, gli autori mostrano che quelli più performanti hanno rappresentazioni sempre più allineate tra loro. I modelli deboli divergono ognuno a modo suo; quelli forti si assomigliano tutti, un fenomeno che viene denominato, parafrasando Tolstoj, lo ``scenario Anna Karenina'': \textit{tutti i buoni modelli sono uguali; ogni cattivo modello è cattivo a modo suo}.
+    \item \textbf{Convergenza cross-modale.} Modelli di linguaggio (solo testo) e modelli di visione (solo immagini), mai addestrati congiuntamente, mostrano strutture di similarità sempre più allineate all'aumentare della scala. La distanza tra ``cono'' e ``sfera'' nello spazio di un LLM correla con la distanza tra le immagini corrispondenti nello spazio di un modello di visione, e questa correlazione cresce con la capacità di entrambi.
+    \item \textbf{Convergenza verso il cervello.} I modelli di visione più performanti sono anche quelli più allineati con le risposte neuronali misurate nel cervello umano tramite fMRI. La convergenza non avviene solo tra macchine: avviene tra macchine e biologia.
+\end{enumerate}
+
+\subsubsection{Cosa guida la convergenza?}
+\label{subsubsec:guida_convergenza}
+In~\parencite{huh2024platonic} vengono identificate tre pressioni selettive. La prima è la \textit{generalità dei task}: più compiti un modello deve risolvere, meno rappresentazioni li soddisfano tutti simultaneamente; al limite, ne resta una sola. La seconda è la \textit{capacità del modello}: modelli più grandi catturano più struttura statistica dei dati, convergendo verso quella reale. La terza è il \textit{simplicity bias}: le reti neurali hanno un bias implicito verso soluzioni semplici, e la rappresentazione ``platonica'' è, in un senso preciso, la più semplice che cattura fedelmente la realtà.
+\subsubsection{Come si misura la convergenza?}
+\label{subsubsec:misura_convergenza}
+Un aspetto metodologico cruciale del lavoro presentato in~\parencite{huh2024platonic} è la scelta di caratterizzare le rappresentazioni attraverso i loro \textbf{kernel}, vale a dire la struttura di distanze e similarità tra i punti. Due rappresentazioni sono considerate ``la stessa'' se i loro kernel sono uguali: se, per ogni coppia di input, il grado di similarità misurato da una rappresentazione è proporzionale a quello misurato dall'altra.
+Formalmente, se un encoder testuale $f_{\text{text}}$ è allineato con un encoder visivo $f_{\text{img}}$, allora:
+\begin{equation}
+    \text{sim}\big(
+        f_{\text{text}}(\text{``cono''}),
+        f_{\text{text}}(\text{``sfera''})
+    \big)
+    \;\approx\;
+    \text{sim}\big(
+        f_{\text{img}}(\triangle),
+        f_{\text{img}}(\circ)
+    \big)
+    \label{eq:kernel_alignment}
+\end{equation}
+In altri termini: ciò che è invariante tra rappresentazioni diverse è la \textit{struttura relazionale}, non i vettori in sé, ma le distanze tra di essi. È esattamente l'analogo dell'intervallo spaziotemporale $ds^2$ di Einstein: le coordinate cambiano, le distanze si preservano.
+\subsubsection{Il collegamento con PRISMA}
+\label{subsubsec:collegamento_prisma}
+La connessione con il presente lavoro è diretta. Le feature families estratte da PRISMA, \textit{Time in physics} con i suoi 47 children, \textit{Ising model} con le sue correlazioni con \textit{Phase Transitions} e \textit{Quantum Spin}, sono una manifestazione esplicita di questa struttura relazionale.
+Se la Platonic Representation Hypothesis è corretta, allora le stesse famiglie, le stesse gerarchie, le stesse relazioni di co-attivazione dovrebbero emergere indipendentemente dal modello di embedding scelto, dal corpus utilizzato e persino dalla modalità dei dati.
+PRISMA, in questa prospettiva, non è solo uno strumento di interpretabilità: è un \textbf{traduttore} che rende la struttura platonica leggibile, trasformando pattern statistici opachi in concetti nominabili e relazioni navigabili.
+\subsubsection{La proposta: cercare isomorfismi tra rappresentazioni}
+\label{subsubsec:proposta_isomorfismi}
+La convergenza osservata in~\parencite{huh2024platonic} tra modelli diversi suggerisce l'esistenza di una struttura semantica sottostante, la ``realtà platonica'' del significato. Ma il framework proposto in quel lavoro confronta rappresentazioni dense tra loro (BERT~\parencite{devlin2018bert} vs.\ DINOv2 vs.\ LLaMA), restando nello spazio dei kernel: la struttura condivisa è rilevata statisticamente, ma rimane opaca, vale a dire non è noto \textit{quali} concetti si preservino, solo che \textit{qualcosa} si preserva.
+PRISMA aggiunge un elemento cruciale: lo Sparse Autoencoder come \textbf{strumento di traduzione} che rende la struttura esplicita. Nella rappresentazione sparsa, gli invarianti non sono solo pattern astratti di distanza tra vettori, ma concetti \textit{nominabili}, famiglie semantiche, gerarchie interpretabili. La feature \textit{Time in physics} e i suoi 47 children non sono un pattern statistico opaco: sono una struttura tassonomica che un fisico riconoscerebbe immediatamente.
+La direzione di ricerca che questo lavoro propone è dunque la seguente: anziché cercare una rappresentazione semantica privilegiata, un ``etere del significato'', concentrarsi su ciò che \textbf{non varia} quando si passa da una rappresentazione all'altra. Formalmente, cercare \textbf{isomorfismi} tra le tre rappresentazioni (densa, sparsa, umana) e caratterizzare gli invarianti che questi isomorfismi preservano. Due domande strutturano questo programma.
+La prima è una domanda tecnica, alla quale è possibile rispondere empiricamente: \textbf{denso e sparso sono isomorfi?} Se l'errore di ricostruzione $\vec{\epsilon}$ è trascurabile, come in Eq.~\ref{eq:reconstruction}:
+\begin{equation}
+    \vec{x}_{\text{denso}} = W_{\text{decode}} \cdot \vec{x}_{\text{sparso}} + \vec{\epsilon}, \quad \text{con} \quad \|\vec{\epsilon}\| \approx 0
+    \label{eq:reconstruction}
+\end{equation}
+allora le due rappresentazioni sono isomorfe, e la matrice $W_{\text{decode}}$ è la funzione di traduzione. Gli SAE attuali hanno errori piccoli ma non nulli: sono \textit{quasi} isomorfi. L'informazione contenuta nel residuo $\vec{\epsilon}$ è una domanda aperta: potrebbe essere rumore, oppure struttura semantica non monosemantica che sfugge alla decomposizione sparsa.
+La seconda è la domanda filosoficamente decisiva: \textbf{sparso e umano sono isomorfi?} Se le feature monosemantiche estratte dal SAE corrispondono ai concetti atomici della cognizione umana, se le famiglie semantiche di PRISMA rispecchiano le categorie con cui viene organizzato il mondo, allora le reti hanno \textit{scoperto} la struttura della mente umana. Se non corrispondono, le possibilità sono tre: o la cognizione umana possiede concetti che le reti non catturano, o le reti hanno ``concetti'' che la cognizione umana non possiede, oppure, la possibilità più interessante, entrambe approssimano qualcosa di terzo: la struttura platonica sottostante, di cui sia la mente umana sia la rete neurale sono proiezioni imperfette.
+\subsubsection{Candidati invarianti semantici}
+\label{subsubsec:candidati_invarianti}
+Se gli invarianti semantici esistono, quali strutture concrete potrebbero preservarsi attraverso rappresentazione densa, sparsa e umana?
+Un primo candidato naturale sono le \textbf{relazioni di analogia}. Se ``re meno uomo più donna uguale regina'' vale nello spazio degli embedding come aritmetica vettoriale, nello spazio sparso come pattern di co-attivazione di feature, e nella mente umana come giudizio intuitivo di relazione, allora quella relazione è un invariante: non appartiene a nessuna rappresentazione in particolare, ma le attraversa tutte.
+Un secondo candidato sono le \textbf{strutture gerarchiche}. Se ``cane è un mammifero'' si preserva in tutte le rappresentazioni, come relazione di inclusione geometrica nello spazio denso, come relazione parent-child nel grafo delle feature families nello spazio sparso, come categorizzazione spontanea nella cognizione umana, allora la gerarchia tassonomica è un invariante. Le 590 famiglie estratte da PRISMA, con la loro organizzazione a stella (parent generale, children specifici), sono candidati particolarmente interessanti: se le stesse famiglie emergono da modelli diversi, su dati diversi, con SAE diversi, allora la struttura di famiglia non è un artefatto del metodo, ma una proprietà del dominio.
+Un terzo candidato sono gli \textbf{ordini di similarità}: se $\text{sim}(A, B) > \text{sim}(A, C)$ in tutte le rappresentazioni, se ``cono'' è più vicino a ``sfera'' che a ``trattore'' ovunque la si misuri, allora quell'ordinamento è un invariante. È esattamente ciò che viene misurato in~\parencite{huh2024platonic} attraverso il kernel alignment, e il fatto che la convergenza tra modelli cresca con la scala è un'evidenza indiretta che questi ordinamenti tendono a stabilizzarsi.
+Infine, un candidato più sottile ma potenzialmente più profondo è la \textbf{dimensionalità effettiva} dello spazio semantico. L'analisi dell'Effective Rank presentata nel Paragrafo~\ref{subsec:effective_rank_results} ha mostrato che la struttura semantica comprime le rappresentazioni in modo sistematico: il Semantic Compression Ratio cresce monotonicamente con l'expansion factor, raggiungendo il 59,9\% per $\rho = 64$. Se questa compressione è una proprietà della struttura del significato e non della rappresentazione specifica, allora l'SCR stesso potrebbe essere un invariante: una misura di quanto il dominio semantico ``è comprimibile'', indipendentemente da come lo si rappresenta.
+\subsubsection{Il ruolo dell'Effective Rank e dell'SCR}
+\label{subsubsec:ruolo_er_scr}
+L'Effective Rank e il Semantic Compression Ratio introdotti in questo lavoro potrebbero servire come strumenti quantitativi per lo studio di questi invarianti. In particolare, se la compressione semantica è una proprietà della struttura del significato e non della rappresentazione specifica, allora l'SCR dovrebbe essere \textbf{invariante rispetto al modello di embedding} utilizzato.
+Un esperimento cruciale per sviluppi futuri sarebbe il seguente: ripetere l'analisi dell'Effective Rank del Paragrafo~\ref{subsec:effective_rank_results} utilizzando modelli di embedding diversi (BERT~\parencite{devlin2018bert}, GPT, modelli multilingue, modelli multimodali) sullo stesso corpus. Se l'SCR converge verso valori simili, vale a dire se la semantica comprime le rappresentazioni nella stessa misura indipendentemente da come sono state costruite, allora l'SCR stesso è un candidato invariante semantico, una proprietà del dominio e non del modello.
+Questo collegherebbe direttamente il contributo tecnico della presente tesi (l'analisi ER/SCR) con il programma di ricerca più ampio sugli invarianti, fornendo una metrica operativa per testare la Platonic Representation Hypothesis nel contesto degli Sparse Autoencoder.
+\subsubsection{Visione d'insieme}
+\label{subsubsec:visione_insieme}
+Questo lavoro è partito da un problema tecnico: le rappresentazioni dense dei modelli linguistici sono opache, e l'interpretabilità richiede strumenti capaci di rendere esplicita la struttura che esse codificano. Lo Sparse Autoencoder, applicato agli embedding densi, si è rivelato uno strumento efficace: estrae concetti interpretabili, li organizza in famiglie gerarchiche coerenti con le tassonomie dei domini di applicazione, e produce rappresentazioni la cui dimensionalità effettiva riflette in modo quantificabile la struttura semantica sottostante.
+Ma nel costruire questo strumento, è emerso qualcosa di più ampio del problema tecnico di partenza. Le feature estratte da PRISMA non sono artefatti del metodo: sono strutture che un esperto di dominio riconosce immediatamente, \textit{Time in physics} e i suoi 47 children, \textit{Ising model} con le sue correlazioni con \textit{Phase Transitions} e \textit{Quantum Spin}, le famiglie cliniche che rispecchiano la logica del ragionamento pediatrico. La consistenza di queste strutture tra domini completamente diversi, fisico e clinico, suggerisce che l'organizzazione gerarchica non è imposta dal SAE, ma \textit{rivelata} da esso.
+La Platonic Representation Hypothesis formulata in~\parencite{huh2024platonic} offre una cornice teorica per questa osservazione: se modelli diversi, addestrati su dati e modalità diverse, convergono verso la stessa struttura relazionale, allora quella struttura non appartiene a nessun modello in particolare, ma appartiene al dominio. E se la stessa struttura si ritrova anche nella cognizione umana, come le evidenze neuroscientifiche cominciano a suggerire, allora è possibile trovarsi di fronte a qualcosa che somiglia a una legge: un invariante del significato, indipendente dalla rappresentazione che lo codifica.
+La correlazione nello spazio dei pesi tra \textit{Ising model} e \textit{Baryon/Boson Spectroscopy}, discussa nel Paragrafo~\ref{subsubsec:feature_example_ising}, è forse l'esempio più suggestivo emerso da questo lavoro: due domini apparentemente distanti che il SAE colloca in direzioni vicine, riflettendo un'affinità formale, le teorie di campo su reticolo, che un fisico riconosce ma che nessuna tassonomia esplicita aveva codificato. Quando una rete neurale trova connessioni reali ma non ovvie, e un esperto umano le conferma \textit{a posteriori}, è difficile sostenere che la struttura sia un artefatto.
+Non è ancora noto se gli invarianti semantici esistano in senso forte, vale a dire se esista, fuori dalla caverna, una struttura del significato formalizzabile come le simmetrie della fisica. Ma è noto che, quando si costruiscono strumenti capaci di tradurre tra rappresentazioni diverse, le stesse strutture riemergono. E il Semantic Compression Ratio, la misura di quanto la semantica comprime lo spazio delle rappresentazioni, cresce monotonicamente con la capacità del SAE, raggiungendo il 59,9\% per $\rho = 64$: la struttura del significato non solo esiste, ma è quantificabile.
+\begin{notebox}
+\textbf{Da PRISMA alla ricerca degli invarianti}\\[0.5em]
+Il presente lavoro ha costruito uno strumento, lo Sparse Autoencoder applicato a embedding densi, e ha mostrato che funziona: estrae concetti interpretabili, organizzati in famiglie gerarchiche, la cui struttura comprime sistematicamente lo spazio delle rappresentazioni.
+La direzione futura è usare questo strumento non come fine, ma come \textit{mezzo}: un traduttore tra rappresentazioni che rende esplicita la struttura semantica, permettendo di cercare ciò che rimane invariante attraverso tutte le traduzioni possibili.
+Se tali invarianti esistono e sono formalizzabili, essi costituiscono le leggi fondamentali del significato, gli ``atomi semantici'' che nessuna rappresentazione particolare crea, ma che tutte, necessariamente, riflettono.
+\end{notebox}

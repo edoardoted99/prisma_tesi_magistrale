@@ -1,8 +1,10 @@
 \newpage
 
-% ****** MC in genere, nelle tesi magistrali, all'inizio del capitolo si aggiunge un testo descrive brevemente come è strutturato il capitolo, stile struttura del documento, ma focalizzato solo sul capitolo 
-
 \section{Word Embeddings}
+\ref{sec:03_word_embeddings}
+
+% --- Testo introduttivo del capitolo (richiesto dal prof) ---
+Il presente capitolo affronta il problema della rappresentazione computazionale del significato linguistico. Nella prima parte viene introdotto il concetto di embedding testuale, a partire dalle basi teoriche che ne motivano la costruzione: la distinzione tra significante e significato, gli assi saussuriani del linguaggio e le ipotesi distribuzionale e di Osgood. Nella seconda parte vengono presentati gli embeddings statici, sia nella variante basata su conteggi (matrici termine--documento e termine--termine) sia in quella predittiva (Word2Vec). La terza parte ripercorre l'evoluzione verso gli embeddings dinamici, dalle reti ricorrenti fino all'architettura Transformer e al modello BERT~\parencite{devlin2018bert}, i cui embeddings densi costituiscono l'oggetto di analisi dei capitoli successivi.
 
 \epigraph{
     Nets are for fish; once you get the fish you can forget the net.\\
@@ -14,7 +16,7 @@
 \label{sec:semantics_to_vectors}
 
 Questo capitolo introduce il concetto di \textbf{embedding testuale}: una rappresentazione matematica che mappa simboli linguistici discreti (parole, token) in vettori continui capaci di catturare relazioni semantiche. Gli embeddings costituiscono il ponte tra il linguaggio naturale e l'elaborazione computazionale, permettendo alle macchine di manipolare il significato anziché limitarsi a confrontare stringhe di caratteri.
-Come vedremo, la capacità di rappresentare efficacemente il significato linguistico in forma vettoriale è fondamentale per il lavoro sviluppato in questa tesi: gli sparse autoencoders (Capitolo~\ref{sec:autoencoders}) verranno applicati proprio a questi embeddings densi per estrarne strutture interpretabili. Prima di arrivare a tale applicazione, è necessario comprendere come si costruiscono gli embeddings, quali proprietà possiedono e come si sono evoluti dai modelli statici a quelli contestuali.
+Come sarà possibile osservare, la capacità di rappresentare efficacemente il significato linguistico in forma vettoriale è fondamentale per il lavoro sviluppato in questa tesi: gli sparse autoencoders (Capitolo~\ref{sec:autoencoders}) verranno applicati proprio a questi embeddings densi per estrarne strutture interpretabili. Prima di arrivare a tale applicazione, è necessario comprendere come si costruiscono gli embeddings, quali proprietà possiedono e come si sono evoluti dai modelli statici a quelli contestuali.
 
 \subsubsection{Simboli e significati}
 \label{subsubsec:symbols_meanings}
@@ -173,14 +175,12 @@ Il fatto che \textit{ongchoi} compaia insieme a parole come \textit{riso}, \text
 Si definisce ipotesi distribuzionale quella ipotesi per la quale parole simili compaiono in contesti simili. 
 \end{notebox}
 
-Tale ipotesi suggerisce che il significato delle parole venga appreso sulla base del contesto in cui queste appaiono. Se questa intuizione viene seguita, allora diventa possibile assegnare rappresentazioni numeriche alle parole sulla base della loro occorrenza in contesti specifici. Prima di arrivare però a capire come costruire gli embeddings è necessario introdurre una ulteriore intuizione attribuita ad 
-Osgood nel 1957.
-% ****** Al posto della riga qua sopra, inserisci la citazione bibliografica con \cite{}
+Tale ipotesi suggerisce che il significato delle parole venga appreso sulla base del contesto in cui queste appaiono. Se questa intuizione viene seguita, allora diventa possibile assegnare rappresentazioni numeriche alle parole sulla base della loro occorrenza in contesti specifici. Prima di arrivare però a capire come costruire gli embeddings è necessario introdurre una ulteriore intuizione attribuita a Osgood~\parencite{Osgood1957Measurement} nel 1957.
 
 \subsubsection{Ipotesi di Osgood: il significato come vettore}
 \label{subsubsec:osgood_hypothesis}
 
-Un contributo fondamentale alla rappresentazione del significato proviene dal lavoro di Osgood \parencite{Osgood1957Measurement}, che studiò la componente affettiva delle parole. Osgood mostrò che i giudizi emotivi associati a una parola possono essere descritti lungo tre dimensioni principali:
+Un contributo fondamentale alla rappresentazione del significato proviene dal lavoro di Osgood~\parencite{Osgood1957Measurement}, che studiò la componente affettiva delle parole. Osgood mostrò che i giudizi emotivi associati a una parola possono essere descritti lungo tre dimensioni principali:
 
 \begin{enumerate}
     \item \textbf{Valenza}: quanto la parola è percepita come positiva o negativa.
@@ -205,11 +205,7 @@ Questa idea è stata la prima ad anticipare direttamente i moderni modelli di \t
 \subsubsection{Verso i word embeddings}
 \label{subsubsec:towards_embeddings}
 L'unione dell'ipotesi distribuzionale e dell'ipotesi di Osgood ha aperto la strada agli embeddings come modello fondamentale per la rappresentazione computazionale del significato. Da un lato, l'ipotesi distribuzionale fornisce il principio secondo cui il significato delle parole può essere inferito dai contesti in cui esse compaiono; dall'altro, l'ipotesi di Osgood suggerisce che tale significato possa essere rappresentato come un vettore numerico in uno spazio semantico.
-Nelle sezioni successive 
-introdurremo 
-% ****** MC: ti suggerisco di sostituire la riga qua sopra con
-% saranno introdotte 
-le principali famiglie di embeddings, partendo dai modelli basati su conteggi (count-based) fino ai moderni embeddings contestuali prodotti da architetture Transformer. Per orientare il lettore, è utile chiarire fin da subito le principali tipologie di embeddings che verranno introdotte nel seguito.
+Nei paragrafi successivi saranno introdotte le principali famiglie di embeddings, partendo dai modelli basati su conteggi (count-based) fino ai moderni embeddings contestuali prodotti da architetture Transformer. Per orientare il lettore, è utile chiarire fin da subito le principali tipologie di embeddings che verranno introdotte nel seguito.
 In base alla natura della rappresentazione prodotta, è possibile distinguere due grandi famiglie: embeddings \textbf{statici} ed embeddings \textbf{dinamici}.
 \begin{figure}[htbp]
 \centering
@@ -243,15 +239,11 @@ In base alla natura della rappresentazione prodotta, è possibile distinguere du
 \textbf{Embeddings statici}\\
 Si definisce statico un embedding in cui ogni parola del vocabolario è associata a un unico vettore pre-computato. Tale rappresentazione rimane invariata a prescindere dal contesto specifico in cui la parola appare.
 \end{notebox}
-Negli embeddings statici, a ciascun tipo di parola del vocabolario è associato un unico vettore, indipendente dal contesto in cui la parola appare. Questa categoria include sia gli embeddings distribuzionali basati su conteggi, come le matrici termine--documento e termine--termine eventualmente ridotte tramite SVD, sia gli embeddings predittivi appresi mediante modelli neurali, come Word2Vec.
+Negli embeddings statici, a ciascun tipo di parola del vocabolario è associato un unico vettore, indipendente dal contesto in cui la parola appare. Questa categoria include sia gli embeddings distribuzionali basati su conteggi, come le matrici termine--documento e termine--termine eventualmente ridotte tramite SVD, sia gli embeddings predittivi appresi mediante modelli neurali, come Word2Vec~\parencite{mikolov2013efficientestimationwordrepresentations}.
 \begin{notebox}
 \textbf{Embeddings dinamici (Contestuali)}\\
 Si definisce dinamico un embedding in cui la rappresentazione vettoriale di una parola viene computata in modo dipendente dal contesto, come funzione dell'intera sequenza di input. La stessa parola riceve quindi vettori diversi a seconda del contesto semantico e sintattico in cui compare.\end{notebox}
-Gli embeddings dinamici, o contestuali, producono 
-invece 
-% ****** MC: sostituirei la riga qua sopra con quindi
-una rappresentazione dipendente dal contesto: la stessa parola può essere associata a vettori diversi a seconda della frase in cui compare. Tali rappresentazioni sono generate da modelli di linguaggio neurali profondi, a partire da architetture ricorrenti fino ai moderni modelli Transformer, come BERT.
-% ****** MC: Qua sopra, aggiungi delle citazioni bibliografiche.
+Gli embeddings dinamici, o contestuali, producono quindi una rappresentazione dipendente dal contesto: la stessa parola può essere associata a vettori diversi a seconda della frase in cui compare. Tali rappresentazioni sono generate da modelli di linguaggio neurali profondi, a partire da architetture ricorrenti~\parencite{elman1990finding} fino ai moderni modelli Transformer~\parencite{vaswani2017attention}, come BERT~\parencite{devlin2018bert}.
 \begin{figure}[htbp]
 \centering
 \begin{forest}
@@ -279,16 +271,13 @@ una rappresentazione dipendente dal contesto: la stessa parola può essere assoc
 \caption{Classificazione delle principali tipologie di embeddings trattate nel capitolo.}
 \label{fig:classificazione_embeddings}
 \end{figure}
-La Figura~\ref{fig:classificazione_embeddings} riassume questa tassonomia. 
-Nelle sezioni successive
-% ****** MC: qua sopra, sostituisci con Nei paragrafi successivi
- analizzeremo in dettaglio ciascuna di queste famiglie, comprendendo come si costruiscono, quali proprietà possiedono e quali limiti presentano. Questo percorso ci condurrà fino agli embeddings densi prodotti da modelli come BERT, che costituiscono l'input degli Sparse Autoencoders discussi nel Capitolo~\ref{sec:04_disentangling_dense_embeddings_with_sparse_autoencoders}.
+La Figura~\ref{fig:classificazione_embeddings} riassume questa tassonomia. Nei paragrafi successivi sarà analizzata in dettaglio ciascuna di queste famiglie, comprendendo come si costruiscono, quali proprietà possiedono e quali limiti presentano. Questo percorso condurrà fino agli embeddings densi prodotti da modelli come BERT, che costituiscono l'input degli Sparse Autoencoders discussi nel Capitolo~\ref{sec:04_disentangling_dense_embeddings_with_sparse_autoencoders}.
 \subsection{Embeddings statici}
 \label{sec:static_embeddings}
-In questa sezione introduciamo gli embeddings statici, rappresentazioni in cui ogni parola del vocabolario è associata a un unico vettore fisso, indipendente dal contesto in cui compare. Distingueremo tra due approcci fondamentali: i metodi \textbf{count-based}, che costruiscono rappresentazioni a partire da statistiche di co-occorrenza, e i metodi \textbf{predittivi}, che apprendono embeddings tramite reti neurali addestrate a predire parole in contesto.
+In questo paragrafo vengono introdotti gli embeddings statici, rappresentazioni in cui ogni parola del vocabolario è associata a un unico vettore fisso, indipendente dal contesto in cui compare. Si distingueranno due approcci fondamentali: i metodi \textbf{count-based}, che costruiscono rappresentazioni a partire da statistiche di co-occorrenza, e i metodi \textbf{predittivi}, che apprendono embeddings tramite reti neurali addestrate a predire parole in contesto.
 \subsubsection{Embeddings count-based}
 \label{subsubsec:count_based}
-Il modo più semplice per costruire embeddings vettoriali delle parole è basato sulla \textbf{matrice di co-occorrenza}, una struttura che codifica quante volte determinati elementi linguistici compaiono insieme all'interno di un corpus. Esistono diverse varianti di matrici di co-occorrenza; in questa sezione ne introduciamo due fondamentali: la \emph{term-document matrix} e la \emph{term-term matrix}.
+Il modo più semplice per costruire embeddings vettoriali delle parole è basato sulla \textbf{matrice di co-occorrenza}, una struttura che codifica quante volte determinati elementi linguistici compaiono insieme all'interno di un corpus. Esistono diverse varianti di matrici di co-occorrenza; in questo paragrafo ne vengono introdotte due fondamentali: la \emph{term-document matrix} e la \emph{term-term matrix}.
 \paragraph{Matrice termine-documento.}
 In una matrice termine-documento ogni riga rappresenta una parola del vocabolario e ogni colonna rappresenta un documento appartenente a una collezione di testi. Ogni cella della matrice contiene il numero di volte in cui la parola associata alla riga compare nel documento associato alla colonna. Un esempio di term-document matrix è riportato nella Tabella~\ref{tab:term_document_shakespeare}, che mostra le occorrenze di quattro parole in quattro opere di Shakespeare.
 
@@ -311,7 +300,7 @@ Questa matrice può essere interpretata in due modi distinti ma complementari. S
 Alternativamente, se si considerano le \textbf{righe} della matrice, ogni parola può essere interpretata come un vettore in uno spazio di dimensione pari al numero di documenti.
 \begin{notebox}
 \textbf{Interpretazione delle righe della matrice termine-documento}\\
-Due parole risultano simili se presentano distribuzioni simili sui documenti, ovvero se tendono a comparire negli stessi testi con frequenze comparabili.
+Due parole risultano simili se presentano distribuzioni simili sui documenti, vale a dire se tendono a comparire negli stessi testi con frequenze comparabili.
 \end{notebox}
 La term-document matrix fornisce quindi una prima, semplice forma di \emph{embedding distribuzionale} delle parole, in cui il significato emerge dalla loro distribuzione nei documenti del corpus.
 \paragraph{Matrice termine-termine.}
@@ -336,20 +325,16 @@ information  & 0 & 3325 & 3982 & 378  & 5   & 13 \\
 In questa rappresentazione, ogni parola è associata a un vettore in uno spazio di dimensione $|V|$, in cui ciascuna dimensione corrisponde a una parola di contesto. Parole semanticamente simili tendono ad avere vettori simili, poiché compaiono in contesti linguistici analoghi.
 \begin{notebox}
 \textbf{Interpretazione della matrice termine--termine}\\
-Due parole risultano semanticamente simili se presentano vettori di co-occorrenza simili, ovvero se tendono a comparire negli stessi contesti linguistici, anche nel caso in cui non compaiano mai direttamente insieme.
+Due parole risultano semanticamente simili se presentano vettori di co-occorrenza simili, vale a dire se tendono a comparire negli stessi contesti linguistici, anche nel caso in cui non compaiano mai direttamente insieme.
 \end{notebox}
 Data $|V|$ la dimensione del vocabolario, tale matrice ha una dimensionalità $|V| \times |V|$. Si hanno tuttavia due problemi:
 \begin{enumerate}
     \item Dal momento che ogni parola co-occorrerà solo con pochissime altre, \textit{la dimensionalità della matrice è enorme}.
     \item La maggior parte delle celle è nulla, e quindi \textit{i vettori sono estremamente sparsi}.
 \end{enumerate}
-% ****** MC Ti consiglio di spendere due parole qua sotto sul problema delle rappresentazioni termine-documento e termine--termine, vale a dire la sparsità e l'alta dimensionalità l'alta dimensionalità (es., la sinonimia tende ad ingrandire le dimensioni).
-Per affrontare questi problemi esistono diverse strategie, tra cui la riduzione dimensionale tramite SVD e il passaggio a paradigmi predittivi come Word2Vec.
+L'alta dimensionalità è aggravata dalla presenza di sinonimi nel vocabolario: parole con significato equivalente occupano righe e colonne distinte, incrementando la dimensione della matrice senza apportare informazione semantica aggiuntiva. Questi problemi, comuni a tutte le rappresentazioni basate su conteggi, saranno ripresi e approfonditi nei capitoli successivi nel contesto degli Sparse Autoencoders. Per affrontarli esistono diverse strategie, tra cui la riduzione dimensionale tramite SVD e il passaggio a paradigmi predittivi come Word2Vec.
 \paragraph{Riduzione dimensionale tramite SVD.}
-Un metodo per la riduzione della dimensionalità è la Singular Value Decomposition applicata alla word--context matrix. Sia $M \in \mathbb{R}^{|V| \times |V|}$ la word--context matrix, eventualmente pesata tramite 
-tf-idf. 
-% ****** MC se qua sopra è la prima volta che parli di tf-idf, dovresti introdurlo 
-La decomposizione ai valori singolari consente di fattorizzare $M$ come prodotto di tre matrici:
+Un metodo per la riduzione della dimensionalità è la Singular Value Decomposition applicata alla word--context matrix. Sia $M \in \mathbb{R}^{|V| \times |V|}$ la word--context matrix, eventualmente pesata tramite tf-idf\footnote{Il \textit{tf-idf} (term frequency--inverse document frequency) è uno schema di pesatura che ridimensiona i conteggi grezzi di co-occorrenza, attribuendo peso maggiore ai termini frequenti in un dato contesto ma rari nel corpus complessivo. In questo modo si attenua l'influenza di parole molto comuni ma semanticamente poco informative, come articoli e preposizioni.}. La decomposizione ai valori singolari consente di fattorizzare $M$ come prodotto di tre matrici:
 \[
 M = U \Sigma V^\top
 \]
@@ -366,9 +351,7 @@ Dati due vettori $u$ e $v$, la similarità coseno è definita come:
 \frac{u \cdot v}{\|u\| \, \|v\|}
 = \frac{\sum_i u_i v_i}{\sqrt{\sum_i u_i^2} \, \sqrt{\sum_i v_i^2}}.
 \end{equation}
-Il valore risultante è compreso tra $-1$ e $1$: $1$ indica massima similarità (stessa direzione), $0$ indica ortogonalità (nessuna similarità), e valori negativi indicano direzioni opposte. Nelle applicazioni di NLP la cosine similarity è spesso preferita alla distanza Euclidea, perché ci interessa confrontare il \textit{pattern} delle co-occorrenze 
-piuttosto che le loro magnitudini assolute.
-% ****** MC: ti consiglio di sostituire la riga sopra con "e non le loro ampiezze assolute."
+Il valore risultante è compreso tra $-1$ e $1$: $1$ indica massima similarità (stessa direzione), $0$ indica ortogonalità (nessuna similarità), e valori negativi indicano direzioni opposte. Nelle applicazioni di NLP la cosine similarity è spesso preferita alla distanza Euclidea, perché l'obiettivo è confrontare il \textit{pattern} delle co-occorrenze e non le loro ampiezze assolute.
 \subsubsection{Word2Vec: un approccio predittivo}
 \label{subsubsec:word2vec}
 \begin{figure}[htbp]
@@ -430,22 +413,18 @@ piuttosto che le loro magnitudini assolute.
 \label{fig:word2vec_teoria_implementazione}
 \end{figure}
 Sebbene i metodi basati su conteggi e la riduzione dimensionale tramite SVD permettano di ottenere rappresentazioni semanticamente dense, essi presentano limiti strutturali non trascurabili. Il calcolo della decomposizione ai valori singolari su matrici di co-occorrenza è computazionalmente oneroso, con una complessità che cresce sensibilmente rispetto alla dimensione del vocabolario, rendendo difficile la scalabilità su corpora massicci.
-Per superare queste criticità, Mikolov et al. hanno introdotto \textit{Word2Vec} \parencite{mikolov2013efficientestimationwordrepresentations}, un framework basato su un paradigma radicalmente diverso: la \textbf{predizione}. Invece di riassumere statistiche globali, Word2Vec apprende gli embeddings processando il testo localmente. Lo spostamento di paradigma risiede nel fatto che, anziché contare le occorrenze totali, 
-addestriamo un classificatore 
-% ****** sostituirei la riga qua sopra con
-% un classificatore viene addestrato
-su un compito di \textbf{classificazione binaria}. Il modello deve rispondere alla domanda:
+Per superare queste criticità, in~\parencite{mikolov2013efficientestimationwordrepresentations} è stato introdotto \textit{Word2Vec}, un framework basato su un paradigma radicalmente diverso: la \textbf{predizione}. Invece di riassumere statistiche globali, Word2Vec apprende gli embeddings processando il testo localmente. Lo spostamento di paradigma risiede nel fatto che, anziché contare le occorrenze totali, un classificatore viene addestrato su un compito di \textbf{classificazione binaria}. Il modello deve rispondere alla domanda:
 \begin{center}
 \textit{``Data la parola target $w$ (es. \textit{albicocca}), qual è la probabilità che la parola candidata $c$ (es. \textit{marmellata}) compaia nel suo contesto?''}
 \end{center}
-In questo approccio, noto come \textbf{self-supervision}, il testo stesso fornisce le etichette: ogni parola $c$ che appare effettivamente vicino a $w$ nel corpus fornisce un esempio positivo (etichetta $1$), dove per ``vicino" si intende dentro una finestra di contesto di $k$ parole. Al contrario, per addestrare il classificatore, il modello genera artificialmente degli esempi negativi campionando parole casuali dal vocabolario che non compaiono nel contesto di $w$ (etichetta $1$).
+In questo approccio, noto come \textbf{self-supervision}, il testo stesso fornisce le etichette: ogni parola $c$ che appare effettivamente vicino a $w$ nel corpus fornisce un esempio positivo (etichetta $1$), dove per ``vicino'' si intende dentro una finestra di contesto di $k$ parole. Al contrario, per addestrare il classificatore, il modello genera artificialmente degli esempi negativi campionando parole casuali dal vocabolario che non compaiono nel contesto di $w$ (etichetta $0$).
 \paragraph{Il classificatore e la funzione sigmoide.}
-L'intuizione alla base del classificatore è che due parole siano semanticamente vicine se i loro vettori di embedding sono simili. Per misurare questa affinità, utilizziamo il \textbf{prodotto scalare} tra il vettore della parola target $\mathbf{w}$ e il vettore della parola di contesto $\mathbf{c}$:
+L'intuizione alla base del classificatore è che due parole siano semanticamente vicine se i loro vettori di embedding sono simili. Per misurare questa affinità, si utilizza il \textbf{prodotto scalare} tra il vettore della parola target $\mathbf{w}$ e il vettore della parola di contesto $\mathbf{c}$:
 \[
 \text{Similarity}(w,c) \approx \mathbf{w} \cdot \mathbf{c}
 \]
 
-Poiché il prodotto scalare può assumere qualsiasi valore reale, utilizziamo la funzione \textbf{sigmoide} $\sigma(x)$ per mappare il risultato in una probabilità compresa tra $0$ e $1$:
+Poiché il prodotto scalare può assumere qualsiasi valore reale, si utilizza la funzione \textbf{sigmoide} $\sigma(x)$ per mappare il risultato in una probabilità compresa tra $0$ e $1$:
 \begin{equation}
 \sigma(x) = \frac{1}{1 + e^{-x}}
 \end{equation}
@@ -470,7 +449,7 @@ Una caratteristica distintiva di Word2Vec è il mantenimento di \textit{due rapp
     \label{fig:skipgram_structure}
 \end{figure}
 
-Sdoppiando le matrici, il modello garantisce la \textit{stabilità dell'ottimizzazione}. Se usassimo un unico vettore $\mathbf{v}$, il modello cercherebbe di massimizzare il prodotto scalare $\mathbf{v} \cdot \mathbf{v}$ (auto-similarità), portando i valori a crescere all'infinito. Con due matrici, il modello apprende relazioni distribuzionali senza questo vincolo. Al termine, si utilizzano solitamente i vettori di $W$ o la media $W+C$.
+Sdoppiando le matrici, il modello garantisce la \textit{stabilità dell'ottimizzazione}. Se si utilizzasse un unico vettore $\mathbf{v}$, il modello cercherebbe di massimizzare il prodotto scalare $\mathbf{v} \cdot \mathbf{v}$ (auto-similarità), portando i valori a crescere all'infinito. Con due matrici, il modello apprende relazioni distribuzionali senza questo vincolo. Al termine, si utilizzano solitamente i vettori di $W$ o la media $W+C$.
 \paragraph{Finestra di contesto e precisione semantica.}
 L'ampiezza della finestra di contesto $k$ controlla quanta informazione sintagmatica il modello può sfruttare per inferire il paradigma semantico. All'aumentare di $k$, il modello osserva un contesto più ampio e cattura relazioni semantiche progressivamente più ricche.
 \begin{itemize}
@@ -513,10 +492,7 @@ Le relazioni semantiche possono essere codificate come differenze vettoriali app
 
 \subsubsection{Limiti degli embeddings statici}
 \label{subsubsec:static_limits}
-La logica ``più sintagma $\Rightarrow$ paradigma più preciso'' evidenzia però un limite intrinseco di Word2Vec: anche se durante l'addestramento sfrutta il contesto, il risultato finale è un \textbf{embedding statico}. Una volta appresi i vettori, ogni parola è associata a un'unica rappresentazione, indipendente dall'uso 
-concreto in 
-% ****** Ti suggerisco di sostituire qua sopra con "nella"
-frase. Questo comporta almeno due criticità fondamentali:
+La logica ``più sintagma $\Rightarrow$ paradigma più preciso'' evidenzia però un limite intrinseco di Word2Vec: anche se durante l'addestramento sfrutta il contesto, il risultato finale è un \textbf{embedding statico}. Una volta appresi i vettori, ogni parola è associata a un'unica rappresentazione, indipendente dall'uso nella frase. Questo comporta almeno due criticità fondamentali:
 \begin{enumerate}
     \item \textit{Polisemia:} una parola con più sensi (es.\ \textit{banco} come mobile o come istituzione finanziaria) viene compressa in un unico vettore che media usi diversi, riducendo la precisione semantica proprio dove il contesto dovrebbe aiutare.
     \item \textit{Contesto ``dimenticato'' in inferenza:} Word2Vec usa la finestra sintagmatica per \emph{apprendere} i vettori, ma in \textit{inferenza} l'embedding di una parola è recuperato come valore fisso dal dizionario del modello e non viene ricalcolato in funzione della frase specifica. Di conseguenza, la stessa parola mantiene lo stesso vettore anche in contesti diversi, e il contesto non può più agire da meccanismo di disambiguazione.
@@ -526,25 +502,16 @@ frase. Questo comporta almeno due criticità fondamentali:
 Per \textbf{inferenza} si intende l'uso del modello \emph{dopo} l'addestramento: dati nuovi input, i parametri appresi $\theta$ restano fissi e il modello calcola solo le sue uscite. In Word2Vec, durante l'addestramento il contesto influenza l'apprendimento dei vettori; in inferenza, però, ogni parola ha un embedding fisso indipendente dal contesto in cui compare.
 \end{notebox}
 Se il significato di una parola dipende sistematicamente dalla ricchezza del sintagma che la circonda, allora la rappresentazione dovrebbe essere una \textbf{funzione del contesto}, non una costante. Questa osservazione motiva il passaggio agli \textbf{embeddings dinamici (contestuali)}: invece di limitarsi a una finestra fissa e a un vettore unico per parola, essi mirano a incorporare informazione proveniente dall'intera sequenza, generando un vettore diverso per ogni occorrenza. 
-Per ottenere questo comportamento servono architetture in grado di modellare il linguaggio come flusso e memoria. Nella prossima sezione introdurremo brevemente le architetture ricorrenti e il meccanismo di attenzione, che preparano il terreno per i moderni Transformer e, in particolare, per 
-BERT—il 
-% ***** Sostituirei il - con una ,
-modello che produce gli embeddings densi su cui applicheremo gli Sparse Autoencoders nei capitoli successivi.
-
-
+Per ottenere questo comportamento servono architetture in grado di modellare il linguaggio come flusso e memoria. Nel prossimo paragrafo saranno introdotte brevemente le architetture ricorrenti e il meccanismo di attenzione, che preparano il terreno per i moderni Transformer e, in particolare, per BERT, il modello che produce gli embeddings densi su cui verranno applicati gli Sparse Autoencoders nei capitoli successivi.
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
 \subsection{Embeddings dinamici (contestuali)}
 \label{sec:dynamic_embeddings}
 
-La sezione precedente ha mostrato come Word2Vec sfrutti il contesto sintagmatico durante l'addestramento per apprendere vettori semanticamente ricchi. Tuttavia, una volta completato il training, il risultato è un dizionario di rappresentazioni fisse: in fase di inferenza, l'embedding di una parola viene semplicemente recuperato da una tabella di lookup, indipendentemente dalle parole che la circondano nella frase concreta.
-Questo limite diventa evidente nei casi di polisemia. La parola \textit{pesca}, ad esempio, può riferirsi a un frutto (\textit{``La pesca è matura''}) o a un'attività (\textit{``La pesca in questo lago è vietata''}). In un modello statico, entrambi gli usi vengono collassati in un unico punto dello spazio vettoriale—una sorta di ``media'' tra sensi incompatibili. Ma il principio sintagma-paradigma discusso nella Sezione~\ref{subsubsec:linguistic_axes} suggerisce l'opposto: il senso corretto non è una proprietà isolata del token, bensì emerge dall'interazione con il contesto in cui quel token è inserito.
-Se un sintagma più ricco rende più preciso il paradigma, allora la rappresentazione di una parola dovrebbe essere 
-una 
-% ****** MC: qua sopra cambierei in "in"
-funzione del contesto, non una costante. Questo è esattamente ciò che gli embeddings dinamici (o contestuali) si propongono di fare: invece di associare un vettore a un \emph{tipo} lessicale (\textit{word type}), associano un vettore a ciascuna \emph{occorrenza} concreta (\textit{word token}), calcolandolo come funzione dell'intera sequenza in cui la parola appare.
+Il paragrafo precedente ha mostrato come Word2Vec sfrutti il contesto sintagmatico durante l'addestramento per apprendere vettori semanticamente ricchi. Tuttavia, una volta completato il training, il risultato è un dizionario di rappresentazioni fisse: in fase di inferenza, l'embedding di una parola viene semplicemente recuperato da una tabella di lookup, indipendentemente dalle parole che la circondano nella frase concreta.
+Questo limite diventa evidente nei casi di polisemia. La parola \textit{pesca}, ad esempio, può riferirsi a un frutto (\textit{``La pesca è matura''}) o a un'attività (\textit{``La pesca in questo lago è vietata''}). In un modello statico, entrambi gli usi vengono collassati in un unico punto dello spazio vettoriale, una sorta di ``media'' tra sensi incompatibili. Ma il principio sintagma-paradigma discusso nel Paragrafo~\ref{subsubsec:linguistic_axes} suggerisce l'opposto: il senso corretto non è una proprietà isolata del token, bensì emerge dall'interazione con il contesto in cui quel token è inserito.
+Se un sintagma più ricco rende più preciso il paradigma, allora la rappresentazione di una parola dovrebbe essere in funzione del contesto, non una costante. Questo è esattamente ciò che gli embeddings dinamici (o contestuali) si propongono di fare: invece di associare un vettore a un \emph{tipo} lessicale (\textit{word type}), associano un vettore a ciascuna \emph{occorrenza} concreta (\textit{word token}), calcolandolo come funzione dell'intera sequenza in cui la parola appare.
 \begin{notebox}
 \textbf{Embedding dinamico (contestuale)}\\
 Data una sequenza di token $x_1, \dots, x_n$, un embedding dinamico è una rappresentazione vettoriale $h_i$ per il token $x_i$ tale che
@@ -554,33 +521,25 @@ h_i = f(x_i, x_{1:n}),
 dove $f$ è una funzione che integra informazione dall'intera sequenza. A differenza degli embeddings statici, $h_i$ dipende dal contesto: la stessa parola riceve vettori diversi in frasi diverse.
 \end{notebox}
 In pratica, queste rappresentazioni emergono dagli stati interni di modelli neurali che processano sequenze. Un embedding statico è un parametro appreso e poi fissato; un embedding dinamico è invece un'attivazione della rete calcolata in inferenza, che cambia al variare del contesto. Per questo motivo, la stessa parola può corrispondere a vettori diversi in frasi diverse: il modello integra informazione sintattica e semantica dalle parole circostanti, disambiguando il senso in modo implicito.
-A questo punto la domanda diventa: come si costruisce una funzione $f$ capace di integrare contesto su sequenze lunghe senza perdere informazione? La storia recente delle architetture neurali per il linguaggio può essere letta come una sequenza di risposte progressive a questo problema. Nelle sezioni successive seguiremo questa evoluzione:
-% ****** MC: se riesci, qua sotto, alle varie RNN, LSTM, ... aggiungi dei riferimenti bibliografici
+A questo punto la domanda diventa: come si costruisce una funzione $f$ capace di integrare contesto su sequenze lunghe senza perdere informazione? La storia recente delle architetture neurali per il linguaggio può essere letta come una sequenza di risposte progressive a questo problema. Nei paragrafi successivi sarà seguita questa evoluzione:
 \begin{enumerate}
-    \item Le RNN introducono memoria sequenziale, ma soffrono di \textit{vanishing gradient}.
-    \item Le LSTM risolvono il vanishing gradient con gate di memoria, ma rimangono unidirezionali e sequenziali.
-    \item La bidirezionalità permette di integrare contesto da entrambe le direzioni—ma per task che richiedono di \textit{trasformare} una sequenza in un'altra servono architetture diverse.
-    \item L'Encoder-Decoder affronta i task sequence-to-sequence, ma introduce un collo di bottiglia informativo.
-    \item Il meccanismo di attenzione supera il bottleneck, permettendo accesso diretto a tutta la sequenza sorgente—ma l'architettura rimane ricorrente.
-    \item I Transformer eliminano la ricorrenza usando solo self-attention, rendendo il calcolo parallelizzabile e l'addestramento su larga scala finalmente fattibile.
-    \item BERT sfrutta la self-attention bidirezionale con un nuovo obiettivo di 
-    % ******* MC: qua sotto, sostituisci i - degli incisi con delle virgole
-    pre-training—il \textit{masked language modeling}—producendo embeddings contestuali potenti ma opachi.
+    \item Le RNN~\parencite{elman1990finding} introducono memoria sequenziale, ma soffrono di \textit{vanishing gradient}.
+    \item Le LSTM~\parencite{hochreiter1997long} risolvono il vanishing gradient con gate di memoria, ma rimangono unidirezionali e sequenziali.
+    \item La bidirezionalità~\parencite{schuster1997bidirectional} permette di integrare contesto da entrambe le direzioni, ma per task che richiedono di \textit{trasformare} una sequenza in un'altra servono architetture diverse.
+    \item L'Encoder-Decoder~\parencite{sutskever2014sequence} affronta i task sequence-to-sequence, ma introduce un collo di bottiglia informativo.
+    \item Il meccanismo di attenzione~\parencite{bahdanau2014neural} supera il bottleneck, permettendo accesso diretto a tutta la sequenza sorgente, ma l'architettura rimane ricorrente.
+    \item I Transformer~\parencite{vaswani2017attention} eliminano la ricorrenza usando solo self-attention, rendendo il calcolo parallelizzabile e l'addestramento su larga scala finalmente fattibile.
+    \item BERT~\parencite{devlin2018bert} sfrutta la self-attention bidirezionale con un nuovo obiettivo di pre-training, il \textit{masked language modeling}, producendo embeddings contestuali potenti ma opachi.
 \end{enumerate}
-Ogni architettura risolve un limite della precedente, introducendo al contempo nuove sfide. Questo percorso ci condurrà fino agli embeddings densi di BERT, la cui opacità motiva il lavoro della presente tesi: nel Capitolo~\ref{sec:04_disentangling_dense_embeddings_with_sparse_autoencoders} introdurremo gli Sparse Autoencoders come strumento per estrarre feature interpretabili da queste rappresentazioni.
+Ogni architettura risolve un limite della precedente, introducendo al contempo nuove sfide. Questo percorso condurrà fino agli embeddings densi di BERT, la cui opacità motiva il lavoro della presente tesi: nel Capitolo~\ref{sec:04_disentangling_dense_embeddings_with_sparse_autoencoders} saranno introdotti gli Sparse Autoencoders come strumento per estrarre feature interpretabili da queste rappresentazioni.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
 \subsubsection{RNN: memoria sequenziale}
 \label{subsubsec:rnn}
-Gli embeddings statici associano a ogni parola un vettore fisso, indipendente dal contesto. Come discusso 
-nella Sezione~\ref{subsubsec:static_limits}, 
-% ****** MC: sostituirei nella riga qua sopra
-% nel Paragrafo ...
-questo approccio fallisce nei casi di polisemia: la parola \textit{pesca} riceve lo stesso vettore sia in ``La pesca è matura'' sia in ``La pesca in questo lago è vietata''. Se il significato emerge dal contesto—come suggerisce l'ipotesi distribuzionale—allora la rappresentazione dovrebbe essere una \textbf{funzione} del contesto, non una costante.
-% ****** qua sopra, sostituisci i - con ,
-Le Reti Neurali Ricorrenti (RNN) introducono esattamente questa capacità. L'idea è semplice: invece di processare ogni token in isolamento, la rete mantiene uno \textbf{stato nascosto} $h_t$ che viene aggiornato ad ogni passo, incorporando informazioni sia dal token corrente sia da tutto ciò che lo precede.
+Gli embeddings statici associano a ogni parola un vettore fisso, indipendente dal contesto. Come discusso nel Paragrafo~\ref{subsubsec:static_limits}, questo approccio fallisce nei casi di polisemia: la parola \textit{pesca} riceve lo stesso vettore sia in ``La pesca è matura'' sia in ``La pesca in questo lago è vietata''. Se il significato emerge dal contesto, come suggerisce l'ipotesi distribuzionale, allora la rappresentazione dovrebbe essere una \textbf{funzione} del contesto, non una costante.
+Le Reti Neurali Ricorrenti (RNN)~\parencite{elman1990finding} introducono esattamente questa capacità. L'idea è semplice: invece di processare ogni token in isolamento, la rete mantiene uno \textbf{stato nascosto} $h_t$ che viene aggiornato ad ogni passo, incorporando informazioni sia dal token corrente sia da tutto ciò che lo precede.
 \begin{notebox}
 \textbf{Ricorrenza}\\
 Si dice \textit{ricorrente} un'architettura in cui l'output di un passo temporale dipende non solo dall'input corrente, ma anche dallo stato interno prodotto ai passi precedenti. Questo crea una forma di memoria: l'informazione può ``persistere'' attraverso la sequenza.
@@ -654,17 +613,13 @@ Questo limite motiva l'introduzione di architetture capaci di \textit{controllar
 
 \subsubsection{LSTM: controllare il flusso di informazione}
 \label{subsubsec:lstm}
-Il vanishing gradient impedisce alle RNN di catturare dipendenze a lungo raggio: l'informazione proveniente dall'inizio della sequenza si attenua progressivamente e non riesce a influenzare le rappresentazioni dei token finali. Le Long Short-Term Memory (LSTM), 
-introdotte da Hochreiter e Schmidhuber~\parencite{hochreiter1997long}, 
-% ****** Nelle citazioni precedenti, non hai quasi mai riportato esplicitamente il nome degli autori, ti consiglio di uniformarti a quello che hai fatto in precedenza.
-% Qua sopra e' sufficiente scrivere "introdotte in~\parencite{...}.
-affrontano questo problema con un'intuizione elegante: non tutta l'informazione ha la stessa importanza, quindi la rete dovrebbe poter \textit{decidere} cosa ricordare e cosa dimenticare.
+Il vanishing gradient impedisce alle RNN di catturare dipendenze a lungo raggio: l'informazione proveniente dall'inizio della sequenza si attenua progressivamente e non riesce a influenzare le rappresentazioni dei token finali. Le Long Short-Term Memory (LSTM), introdotte in~\parencite{hochreiter1997long}, affrontano questo problema con un'intuizione elegante: non tutta l'informazione ha la stessa importanza, quindi la rete dovrebbe poter \textit{decidere} cosa ricordare e cosa dimenticare.
 Nelle RNN standard, lo stato nascosto $h_t$ viene completamente riscritto ad ogni passo. Le LSTM introducono invece una separazione tra due tipi di memoria:
 \begin{itemize}
     \item Il \textbf{cell state} $c_t$: una memoria a lungo termine che scorre attraverso la sequenza con modifiche minime e controllate.
     \item Lo \textbf{stato nascosto} $h_t$: una memoria a breve termine che costituisce l'output della cella ad ogni passo.
 \end{itemize}
-La chiave dell'architettura sono i \textbf{gate}—meccanismi che regolano il flusso di informazione verso e dal cell state.
+La chiave dell'architettura sono i \textbf{gate}, vale a dire meccanismi che regolano il flusso di informazione verso e dal cell state.
 \begin{notebox}
 \textbf{Gate di memoria}\\
 Un \textit{gate} è uno strato neurale con attivazione sigmoide che produce valori tra 0 e 1. Questi valori vengono moltiplicati elemento per elemento con un vettore di informazione: valori vicini a 0 ``bloccano'' l'informazione, valori vicini a 1 la ``lasciano passare''. I gate permettono alla rete di apprendere \textit{quali} informazioni preservare e quali scartare.
@@ -724,14 +679,14 @@ Il meccanismo dei gate risolve il problema del vanishing gradient in modo elegan
 Tuttavia, le LSTM presentano due limiti strutturali che nessun meccanismo di gate può risolvere.
 \begin{notebox}
 \textbf{Unidirezionalità}\\
-Lo stato $h_t$ dipende esclusivamente dalla storia passata $x_1, \dots, x_t$. Quando la LSTM processa il token in posizione $t$, non ha accesso ai token successivi $x_{t+1}, \dots, x_n$. Per molti task di comprensione, il contesto futuro è tanto informativo quanto quello passato.
+Lo stato $h_t$ dipende esclusivamente dalla storia passata $x_1, \dots, x_t$. Quando l'LSTM processa il token in posizione $t$, non ha accesso ai token successivi $x_{t+1}, \dots, x_n$. Per molti task di comprensione, il contesto futuro è tanto informativo quanto quello passato.
 \end{notebox}
 
 \begin{notebox}
 \textbf{Sequenzialità}\\
 Ogni stato $h_t$ deve attendere il completamento di $h_{t-1}$ prima di essere calcolato. Questa dipendenza sequenziale impedisce la parallelizzazione: anche con hardware moderno capace di eseguire migliaia di operazioni simultanee, la rete deve procedere un passo alla volta. Il tempo di calcolo cresce linearmente con la lunghezza della sequenza.
 \end{notebox}
-Il problema della sequenzialità diventerà critico quando vorremo addestrare modelli su corpora di miliardi di parole. Ma il problema più immediato è l'unidirezionalità: se il significato dipende dal contesto completo, servono architetture capaci di integrare informazioni da entrambe le direzioni.
+Il problema della sequenzialità diventerà critico quando si vorranno addestrare modelli su corpora di miliardi di parole. Ma il problema più immediato è l'unidirezionalità: se il significato dipende dal contesto completo, servono architetture capaci di integrare informazioni da entrambe le direzioni.
 
 
 
@@ -751,19 +706,16 @@ Il problema della sequenzialità diventerà critico quando vorremo addestrare mo
 \subsubsection{Bidirezionalità}
 \label{subsubsec:bidirectional}
 
-Le LSTM risolvono il problema del vanishing gradient, ma lo stato nascosto $h_t$ integra esclusivamente informazioni dal passato. Consideriamo la frase ``La pesca in questo lago è vietata''. Quando la rete processa il token \textit{pesca}, non ha ancora visto le parole \textit{lago} e \textit{vietata}, che sono cruciali per disambiguare il significato. L'embedding di \textit{pesca} viene calcolato avendo accesso solo a 
-% ****** controlla la riga qua sotto, c'e' qualcosa che non va
-\textit{La}—informazione insufficiente.
+Le LSTM risolvono il problema del vanishing gradient, ma lo stato nascosto $h_t$ integra esclusivamente informazioni dal passato. Si consideri la frase ``La pesca in questo lago è vietata''. Quando la rete processa il token \textit{pesca}, non ha ancora visto le parole \textit{lago} e \textit{vietata}, che sono cruciali per disambiguare il significato. L'embedding di \textit{pesca} viene calcolato avendo accesso solo a \textit{La}, un'informazione insufficiente.
 La soluzione è semplice: processare la sequenza in entrambe le direzioni.
 \begin{notebox}
 \textbf{Bidirezionalità}\\
 Un'architettura \textit{bidirezionale} processa la sequenza due volte: una volta da sinistra a destra, una volta da destra a sinistra. L'embedding finale di ogni token combina le informazioni provenienti da entrambe le direzioni, integrando così il contesto completo.
 \end{notebox}
-Una Bi-LSTM consiste di due LSTM indipendenti che operano in parallelo:
-% ****** Qua sotto, cambierei La LSTM in L'LSTM, in entrambi i punti
+Una Bi-LSTM~\parencite{schuster1997bidirectional} consiste di due LSTM indipendenti che operano in parallelo:
 \begin{itemize}
-    \item La LSTM \textbf{forward} legge la sequenza da $x_1$ a $x_n$, producendo stati $\overrightarrow{h}_1, \dots, \overrightarrow{h}_n$. Ogni $\overrightarrow{h}_t$ cattura il contesto passato.
-    \item La LSTM \textbf{backward} legge la sequenza da $x_n$ a $x_1$, producendo stati $\overleftarrow{h}_n, \dots, \overleftarrow{h}_1$. Ogni $\overleftarrow{h}_t$ cattura il contesto futuro.
+    \item L'LSTM \textbf{forward} legge la sequenza da $x_1$ a $x_n$, producendo stati $\overrightarrow{h}_1, \dots, \overrightarrow{h}_n$. Ogni $\overrightarrow{h}_t$ cattura il contesto passato.
+    \item L'LSTM \textbf{backward} legge la sequenza da $x_n$ a $x_1$, producendo stati $\overleftarrow{h}_n, \dots, \overleftarrow{h}_1$. Ogni $\overleftarrow{h}_t$ cattura il contesto futuro.
 \end{itemize}
 L'embedding contestuale finale per il token in posizione $t$ si ottiene concatenando i due stati:
 \begin{equation}
@@ -843,14 +795,9 @@ h_t^{\text{bi}} = [\overrightarrow{h}_t \oplus \overleftarrow{h}_t]
 \caption{Architettura Bi-LSTM. La sequenza viene processata in entrambe le direzioni. L'embedding finale di ogni token è la concatenazione degli stati forward e backward, integrando così il contesto completo.}
 \label{fig:bilstm}
 \end{figure}
-% ****** Da adesso in avanti non te lo indico più esplicitamente, tuttavia cambia i — degli incisi in virgole. 
 Tornando all'esempio, l'embedding bidirezionale di \textit{pesca} ora integra sia l'informazione da \textit{La} (attraverso $\overrightarrow{h}_2$) sia quella da \textit{in questo lago è vietata} (attraverso $\overleftarrow{h}_2$). Il modello ha finalmente accesso al contesto completo necessario per disambiguare il significato.
-Le Bi-LSTM hanno rappresentato per anni lo stato dell'arte per task di comprensione del linguaggio: classificazione, named entity recognition, part-of-speech tagging. Per questi task, la frase da analizzare esiste per intero prima dell'elaborazione—la bidirezionalità è non solo possibile, ma naturale.
-Tuttavia, esiste una classe di problemi per cui le Bi-LSTM non bastano: i task \textbf{sequence-to-sequence}. Traduzione automatica, riassunto, risposta a domande—in questi casi l'obiettivo non è solo \textit{comprendere} una sequenza, ma \textit{trasformarla} in 
-un'altra sequenza diversa. 
-% ****** MC: qua sopra modificherei in
-% una sequenza diversa.
-E qui emerge un problema strutturale nuovo: la sequenza target non esiste ancora quando iniziamo a generarla.
+Le Bi-LSTM hanno rappresentato per anni lo stato dell'arte per task di comprensione del linguaggio: classificazione, named entity recognition, part-of-speech tagging. Per questi task, la frase da analizzare esiste per intero prima dell'elaborazione, e la bidirezionalità è non solo possibile, ma naturale.
+Tuttavia, esiste una classe di problemi per cui le Bi-LSTM non bastano: i task \textbf{sequence-to-sequence}. Traduzione automatica, riassunto, risposta a domande: in questi casi l'obiettivo non è solo \textit{comprendere} una sequenza, ma \textit{trasformarla} in una sequenza diversa. E qui emerge un problema strutturale nuovo: la sequenza target non esiste ancora quando se ne inizia la generazione.
 
 
 
@@ -859,16 +806,15 @@ E qui emerge un problema strutturale nuovo: la sequenza target non esiste ancora
 
 \subsubsection{Encoder-Decoder: trasformare sequenze}
 \label{subsubsec:encoder_decoder}
-% ****** qua sotto, ti consiglio di passare dalla forma plurale alla prima persona o all'impersonale
-Con le Bi-LSTM possiamo costruire embeddings che integrano il contesto completo di una frase. Per task di \textit{comprensione}—classificare un documento, identificare entità, analizzare il sentiment—questo è sufficiente: la frase esiste per intero, la processiamo, otteniamo rappresentazioni ricche per ogni token.
-Ma cosa succede quando l'obiettivo è \textit{trasformare} una sequenza in un'altra? Consideriamo la traduzione automatica: data la frase inglese ``The cat sleeps on the sofa'', vogliamo produrre ``Il gatto dorme sul divano''. Oppure il riassunto: dato un articolo di 500 parole, generare un abstract di 50. O ancora il question answering generativo: data una domanda e un contesto, produrre una risposta in linguaggio naturale.
+Con le Bi-LSTM è possibile costruire embeddings che integrano il contesto completo di una frase. Per task di \textit{comprensione}, come classificare un documento, identificare entità o analizzare il sentiment, questo è sufficiente: la frase esiste per intero, viene processata e si ottengono rappresentazioni ricche per ogni token.
+Ma cosa succede quando l'obiettivo è \textit{trasformare} una sequenza in un'altra? Si consideri la traduzione automatica: data la frase inglese ``The cat sleeps on the sofa'', l'obiettivo è produrre ``Il gatto dorme sul divano''. Oppure il riassunto: dato un articolo di 500 parole, generare un abstract di 50. O ancora il question answering generativo: data una domanda e un contesto, produrre una risposta in linguaggio naturale.
 Questi task, noti come \textbf{sequence-to-sequence}, pongono un problema strutturalmente diverso.
 \begin{notebox}
 \textbf{Il problema sequence-to-sequence}\\
-Nei task sequence-to-sequence, la sequenza target non esiste al momento dell'elaborazione. Mentre nei task di comprensione la frase è data per intero, qui dobbiamo \textit{generare} la sequenza di output token per token. Quando produciamo il primo token della traduzione, il resto della frase target non esiste ancora—non c'è niente su cui applicare una Bi-LSTM.
+Nei task sequence-to-sequence, la sequenza target non esiste al momento dell'elaborazione. Mentre nei task di comprensione la frase è data per intero, qui è necessario \textit{generare} la sequenza di output token per token. Quando viene prodotto il primo token della traduzione, il resto della frase target non esiste ancora, e non è possibile applicare una Bi-LSTM.
 \end{notebox}
-Questo vincolo ha una conseguenza fondamentale: il decoder è costretto alla \textbf{causalità}. Quando genera il token in posizione $t$, può basarsi solo sui token già generati $y_1, \dots, y_{t-1}$, non su quelli futuri $y_{t+1}, \dots, y_m$—semplicemente perché questi non esistono ancora. La bidirezionalità, possibile sull'input, è impossibile sull'output.
-L'architettura Encoder-Decoder~\parencite{sutskever2014sequence} affronta questo problema separando comprensione e generazione in due moduli distinti:
+Questo vincolo ha una conseguenza fondamentale: il decoder è costretto alla \textbf{causalità}. Quando genera il token in posizione $t$, può basarsi solo sui token già generati $y_1, \dots, y_{t-1}$, non su quelli futuri $y_{t+1}, \dots, y_m$, semplicemente perché questi non esistono ancora. La bidirezionalità, possibile sull'input, è impossibile sull'output.
+L'architettura Encoder-Decoder, introdotta in~\parencite{sutskever2014sequence}, affronta questo problema separando comprensione e generazione in due moduli distinti:
 \begin{enumerate}
     \item L'\textbf{encoder} è una rete ricorrente (tipicamente una Bi-LSTM) che processa la sequenza sorgente $x_1, \dots, x_n$ e la ``comprende'', producendo una rappresentazione utilizzabile.
     \item Il \textbf{decoder} è una seconda rete ricorrente che, condizionata sull'output dell'encoder, genera la sequenza target $y_1, \dots, y_m$ un token alla volta.
@@ -939,10 +885,10 @@ P(y_1, \dots, y_m \mid x_1, \dots, x_n) = \prod_{t=1}^{m} P(y_t \mid y_1, \dots,
 \caption{Architettura Encoder-Decoder. L'encoder comprime la sequenza sorgente nel context vector $c$. Il decoder genera la sequenza target condizionato su $c$, un token alla volta. Tutta l'informazione deve passare attraverso $c$: questo è il bottleneck.}
 \label{fig:encoder_decoder}
 \end{figure}
-Il problema di questa architettura è evidente: l'intera sequenza sorgente—con tutte le sue sfumature semantiche, sintattiche, lessicali—deve essere compressa in un unico vettore $c \in \mathbb{R}^d$ di dimensione fissa.
+Il problema di questa architettura è evidente: l'intera sequenza sorgente, con tutte le sue sfumature semantiche, sintattiche e lessicali, deve essere compressa in un unico vettore $c \in \mathbb{R}^d$ di dimensione fissa.
 \begin{notebox}
 \textbf{Bottleneck informativo}\\
-Nel modello Encoder-Decoder classico, il context vector $c$ costituisce un \textit{collo di bottiglia}: tutta l'informazione della sequenza sorgente deve attraversare questo singolo punto. Una frase di 5 parole e una di 50 devono entrambe essere compresse nello stesso spazio. Man mano che la sequenza sorgente si allunga, cresce la quantità di informazione da ``stipare'' in una dimensione costante—e inevitabilmente qualcosa viene perso.
+Nel modello Encoder-Decoder classico, il context vector $c$ costituisce un \textit{collo di bottiglia}: tutta l'informazione della sequenza sorgente deve attraversare questo singolo punto. Una frase di 5 parole e una di 50 devono entrambe essere compresse nello stesso spazio. Man mano che la sequenza sorgente si allunga, cresce la quantità di informazione da ``stipare'' in una dimensione costante, e inevitabilmente qualcosa viene perso.
 \end{notebox}
 Il bottleneck introduce almeno tre criticità:
 \begin{itemize}
@@ -950,7 +896,7 @@ Il bottleneck introduce almeno tre criticità:
     \item \textbf{Dominanza dei token recenti}: nonostante le LSTM, gli ultimi token della sequenza tendono a influenzare $c$ più dei primi.
     \item \textbf{Assenza di allineamento}: in traduzione, parole diverse dell'input corrispondono a parole diverse dell'output. Ma il decoder riceve un unico vettore indifferenziato $c$, senza indicazioni su quale parte dell'input sia rilevante per generare quale parte dell'output.
 \end{itemize}
-Empiricamente, le prestazioni dei modelli Encoder-Decoder degradano significativamente all'aumentare della lunghezza delle sequenze~\parencite{bahdanau2014neural}. Il bottleneck non è solo un problema teorico—è un limite pratico che impedisce di scalare a frasi lunghe e documenti complessi.
+Empiricamente, le prestazioni dei modelli Encoder-Decoder degradano significativamente all'aumentare della lunghezza delle sequenze~\parencite{bahdanau2014neural}. Il bottleneck non è solo un problema teorico, ma un limite pratico che impedisce di scalare a frasi lunghe e documenti complessi.
 La soluzione richiede un ripensamento radicale: invece di costringere tutta l'informazione a passare per un unico punto, serve un meccanismo che permetta al decoder di accedere \textit{selettivamente} a diverse parti dell'encoder durante la generazione.
 
 
@@ -959,18 +905,14 @@ La soluzione richiede un ripensamento radicale: invece di costringere tutta l'in
 
 \subsubsection{Attenzione: superare il bottleneck}
 \label{subsubsec:attention}
-Il bottleneck dell'architettura Encoder-Decoder deriva da un vincolo strutturale: l'unica informazione sulla sequenza sorgente disponibile al decoder è il singolo vettore $c$. Indipendentemente da quale token stia generando—il primo, il decimo, l'ultimo—il decoder consulta sempre lo stesso riassunto compresso dell'input.
+Il bottleneck dell'architettura Encoder-Decoder deriva da un vincolo strutturale: l'unica informazione sulla sequenza sorgente disponibile al decoder è il singolo vettore $c$. Indipendentemente da quale token stia generando, il primo, il decimo o l'ultimo, il decoder consulta sempre lo stesso riassunto compresso dell'input.
 Ma questa uniformità non riflette la natura del problema. Quando un traduttore genera la parola ``gatto'', ha bisogno di concentrarsi sulla parola ``cat'' nell'input; quando genera ``divano'', deve concentrarsi su ``sofa''. Parti diverse dell'output richiedono parti diverse dell'input. Un singolo vettore statico non può catturare questa corrispondenza dinamica.
-Il meccanismo di attenzione, introdotto 
-da Bahdanau et al.~\parencite{bahdanau2014neural}, 
-% ****** 
-% in \parencite{},
-risolve il problema con un'idea elegante: invece di un unico context vector $c$, il decoder riceve un context vector \textit{diverso} $c_i$ per ogni token che genera.
+Il meccanismo di attenzione, introdotto in~\parencite{bahdanau2014neural}, risolve il problema con un'idea elegante: invece di un unico context vector $c$, il decoder riceve un context vector \textit{diverso} $c_i$ per ogni token che genera.
 \begin{notebox}
 \textbf{Attenzione}\\
 Il meccanismo di \textit{attenzione} permette al decoder di accedere direttamente a tutti gli stati dell'encoder, selezionando dinamicamente le parti più rilevanti ad ogni passo di generazione. Invece di comprimere l'intera sequenza in un punto fisso, l'informazione viene recuperata selettivamente dalla memoria dell'encoder.
 \end{notebox}
-Il meccanismo opera in tre fasi. Supponiamo che il decoder stia per generare il token $y_i$ e si trovi nello stato $s_{i-1}$. L'encoder ha prodotto gli stati $h_1, h_2, \dots, h_n$ per i token sorgente.
+Il meccanismo opera in tre fasi. Si supponga che il decoder stia per generare il token $y_i$ e si trovi nello stato $s_{i-1}$. L'encoder ha prodotto gli stati $h_1, h_2, \dots, h_n$ per i token sorgente.
 \textbf{Fase 1: Calcolo dei punteggi.} Per ogni stato dell'encoder $h_j$, si calcola un punteggio che misura quanto quella posizione sia ``rilevante'' per il passo corrente di generazione:
 \begin{equation}
 \text{score}(s_{i-1}, h_j) = s_{i-1} \cdot h_j
@@ -1032,14 +974,14 @@ c_i = \sum_{j=1}^{n} \alpha_{ij} \, h_j
 \caption{Meccanismo di attenzione. Per generare ``gatto'', il decoder interroga tutti gli stati dell'encoder. I pesi $\alpha_{ij}$ determinano quanto ogni posizione contribuisce al context vector $c_i$. In questo esempio, l'attenzione si concentra su $h_2$ (``cat''), che contribuisce per l'80\%.}
 \label{fig:attention_mechanism}
 \end{figure}
-L'intuizione è che il decoder ``interroga'' l'encoder ad ogni passo: \textit{data la traduzione parziale che ho generato finora, quale parte dell'input è rilevante per il prossimo token?} La risposta è una distribuzione di probabilità sulle posizioni dell'input, e il context vector è il riassunto dell'input secondo quella distribuzione.
+L'intuizione è che il decoder ``interroga'' l'encoder ad ogni passo: \textit{data la traduzione parziale generata finora, quale parte dell'input è rilevante per il prossimo token?} La risposta è una distribuzione di probabilità sulle posizioni dell'input, e il context vector è il riassunto dell'input secondo quella distribuzione.
 Questo meccanismo risolve i problemi del bottleneck:
 \begin{itemize}
     \item \textbf{Nessuna compressione forzata}: l'informazione non deve più attraversare un singolo punto. Il decoder può recuperare dettagli da qualsiasi posizione dell'encoder quando servono.
-    \item \textbf{Accesso diretto}: anche i dettagli all'inizio di una frase lunga rimangono accessibili—basta che il decoder impari ad assegnare loro peso alto quando necessario.
+    \item \textbf{Accesso diretto}: anche i dettagli all'inizio di una frase lunga rimangono accessibili, a condizione che il decoder impari ad assegnare loro peso alto quando necessario.
     \item \textbf{Allineamento implicito}: i pesi $\alpha_{ij}$ implementano un allineamento morbido tra posizioni sorgente e target, senza supervisione esplicita.
 \end{itemize}
-Tuttavia, l'attenzione così formulata opera ancora all'interno di un'architettura ricorrente. L'encoder è una LSTM che processa la sequenza passo dopo passo; il decoder è un'altra LSTM che genera token sequenzialmente. Il limite della \textbf{sequenzialità} rimane: ogni stato dipende dal precedente, e il calcolo non può essere parallelizzato.
+Tuttavia, l'attenzione così formulata opera ancora all'interno di un'architettura ricorrente. L'encoder è un'LSTM che processa la sequenza passo dopo passo; il decoder è un'altra LSTM che genera token sequenzialmente. Il limite della \textbf{sequenzialità} rimane: ogni stato dipende dal precedente, e il calcolo non può essere parallelizzato.
 La domanda diventa: se l'attenzione permette di collegare direttamente posizioni distanti, serve ancora la ricorrenza?
 
 
@@ -1053,23 +995,15 @@ La domanda diventa: se l'attenzione permette di collegare direttamente posizioni
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsubsection{Transformer: attenzione senza ricorrenza}
 \label{subsubsec:transformer}
-Il meccanismo di attenzione risolve il bottleneck informativo: il decoder può ora accedere selettivamente a qualsiasi posizione dell'encoder, senza che l'informazione debba essere compressa in un singolo vettore. Tuttavia, nelle architetture di Bahdanau, l'attenzione si innesta su una struttura ancora ricorrente. L'encoder è una LSTM che processa i token uno dopo l'altro; il decoder è un'altra LSTM che genera sequenzialmente. L'attenzione migliora il \textit{flusso} di informazione, ma non elimina il vincolo della \textit{sequenzialità}.
-Questo vincolo ha conseguenze pratiche importanti. Una LSTM che processa una sequenza di 100 token deve eseguire 100 passi di calcolo, ciascuno dipendente dal precedente. Anche disponendo di hardware capace di migliaia di operazioni parallele—come le moderne GPU—la rete deve procedere un passo alla volta. Il tempo di addestramento cresce linearmente con la lunghezza delle sequenze, rendendo proibitivo l'addestramento su corpora di miliardi di parole.
-I Transformer, introdotti 
-% ****** MC. Qua sotto riformula
-% in \parencite{}
-% Da adesso in avanti non te lo segno più. Tu cerca tutte le occorrenze di \parencite, controlla e nel caso sistema e 
-da Vaswani et al.~\parencite{vaswani2017attention}, 
-partono da 
-% ****** MC. Sostituirei la riga qua sopra con 
-% si basano su
-un'osservazione semplice: se l'attenzione può già collegare direttamente qualsiasi coppia di posizioni, a cosa serve la ricorrenza? La risposta è: a nulla. L'intera architettura può essere costruita usando \textit{esclusivamente} meccanismi di attenzione, eliminando completamente la ricorrenza.
-L'innovazione chiave è la \textbf{self-attention}. Nell'attenzione encoder-decoder di Bahdanau, il decoder interroga l'encoder: sono due sequenze diverse—l'input sorgente e l'output in costruzione. Il decoder chiede: \textit{quale parte dell'input mi serve per generare il prossimo token dell'output?}
+Il meccanismo di attenzione risolve il bottleneck informativo: il decoder può ora accedere selettivamente a qualsiasi posizione dell'encoder, senza che l'informazione debba essere compressa in un singolo vettore. Tuttavia, nelle architetture proposte in~\parencite{bahdanau2014neural}, l'attenzione si innesta su una struttura ancora ricorrente. L'encoder è un'LSTM che processa i token uno dopo l'altro; il decoder è un'altra LSTM che genera sequenzialmente. L'attenzione migliora il \textit{flusso} di informazione, ma non elimina il vincolo della \textit{sequenzialità}.
+Questo vincolo ha conseguenze pratiche importanti. Un'LSTM che processa una sequenza di 100 token deve eseguire 100 passi di calcolo, ciascuno dipendente dal precedente. Anche disponendo di hardware capace di migliaia di operazioni parallele, come le moderne GPU, la rete deve procedere un passo alla volta. Il tempo di addestramento cresce linearmente con la lunghezza delle sequenze, rendendo proibitivo l'addestramento su corpora di miliardi di parole.
+I Transformer, introdotti in~\parencite{vaswani2017attention}, si basano su un'osservazione semplice: se l'attenzione può già collegare direttamente qualsiasi coppia di posizioni, a cosa serve la ricorrenza? La risposta è: a nulla. L'intera architettura può essere costruita usando \textit{esclusivamente} meccanismi di attenzione, eliminando completamente la ricorrenza.
+L'innovazione chiave è la \textbf{self-attention}. Nell'attenzione encoder-decoder introdotta in~\parencite{bahdanau2014neural}, il decoder interroga l'encoder: sono due sequenze diverse, l'input sorgente e l'output in costruzione. Il decoder chiede: \textit{quale parte dell'input mi serve per generare il prossimo token dell'output?}
 \begin{notebox}
 \textbf{Self-attention}\\
-Nella \textit{self-attention}, una sequenza interroga \textit{se stessa}: ogni token calcola pesi di attenzione rispetto a tutti gli altri token della stessa sequenza. Non c'è una seconda sequenza—ogni posizione chiede: \textit{quali altre posizioni della mia stessa frase sono rilevanti per costruire la mia rappresentazione?} Questo permette di costruire embeddings contestuali senza elaborazione sequenziale.
+Nella \textit{self-attention}, una sequenza interroga \textit{se stessa}: ogni token calcola pesi di attenzione rispetto a tutti gli altri token della stessa sequenza. Non c'è una seconda sequenza; ogni posizione chiede: \textit{quali altre posizioni della mia stessa frase sono rilevanti per costruire la mia rappresentazione?} Questo permette di costruire embeddings contestuali senza elaborazione sequenziale.
 \end{notebox}
-Consideriamo la frase ``Il gatto che hai visto ieri dorme''. Per costruire una buona rappresentazione della parola ``dorme'', serve sapere che il soggetto è ``gatto''—non ``ieri''—nonostante le sei parole che li separano. In una LSTM, l'informazione su ``gatto'' deve viaggiare attraverso tutti gli stati intermedi per raggiungere ``dorme''. Nella self-attention, ``dorme'' può interrogare direttamente ``gatto'' in un singolo passo, assegnandogli un peso alto e ignorando le posizioni meno rilevanti.
+Si consideri la frase ``Il gatto che hai visto ieri dorme''. Per costruire una buona rappresentazione della parola ``dorme'', serve sapere che il soggetto è ``gatto'', non ``ieri'', nonostante le sei parole che li separano. In un'LSTM, l'informazione su ``gatto'' deve viaggiare attraverso tutti gli stati intermedi per raggiungere ``dorme''. Nella self-attention, ``dorme'' può interrogare direttamente ``gatto'' in un singolo passo, assegnandogli un peso alto e ignorando le posizioni meno rilevanti.
 \begin{figure}[htbp]
 \centering
 \begin{tikzpicture}[
@@ -1107,14 +1041,11 @@ Consideriamo la frase ``Il gatto che hai visto ieri dorme''. Per costruire una b
 Il punto cruciale è che questo calcolo può avvenire \textit{simultaneamente} per tutte le posizioni.
 \begin{notebox}
 \textbf{Parallelizzabilità}\\
-Nella ricorrenza, ogni stato $h_t$ dipende dal precedente $h_{t-1}$: il calcolo è intrinsecamente sequenziale. Nella self-attention, il punteggio tra le posizioni $i$ e $j$ non dipende da quello tra $i$ e $k$—tutti i pesi possono essere calcolati in parallelo. Questo permette di sfruttare pienamente l'hardware moderno: le GPU, progettate per eseguire migliaia di operazioni simultanee, possono processare intere sequenze in un singolo passo.
+Nella ricorrenza, ogni stato $h_t$ dipende dal precedente $h_{t-1}$: il calcolo è intrinsecamente sequenziale. Nella self-attention, il punteggio tra le posizioni $i$ e $j$ non dipende da quello tra $i$ e $k$, e tutti i pesi possono essere calcolati in parallelo. Questo permette di sfruttare pienamente l'hardware moderno: le GPU, progettate per eseguire migliaia di operazioni simultanee, possono processare intere sequenze in un singolo passo.
 \end{notebox}
-È questo cambio di paradigma computazionale—più che un miglioramento algoritmico—a rendere i Transformer rivoluzionari. Senza la parallelizzazione, sarebbe impossibile addestrare modelli su corpora di centinaia di miliardi di parole. I modelli linguistici moderni esistono perché i Transformer hanno reso il loro addestramento \textit{fattibile}.
-Inoltre, a differenza delle architetture ricorrenti, la self-attention può essere naturalmente \textbf{bidirezionale}: nulla impedisce a ogni token di interrogare tutti gli altri, sia quelli che lo precedono sia quelli che lo seguono. Per i task di 
-comprensione—classificare 
-% ****** MC. Controlla la riga qua sopra
-un testo, estrarre entità, rispondere a domande—questa è esattamente la capacità che serve: la frase da analizzare esiste per intero, e ogni parola dovrebbe poter attingere al contesto completo.
-Ma per sfruttare questa bidirezionalità su larga scala, serve un \textbf{obiettivo di pre-training} che permetta al modello di apprendere rappresentazioni generali del linguaggio prima di essere adattato a task specifici. L'obiettivo classico—\textit{predici il prossimo token}—non è compatibile: se il modello vede l'intera sequenza, conosce già la risposta. Serve un compito diverso, che sfrutti il contesto bidirezionale anziché essere vanificato da esso.
+È questo cambio di paradigma computazionale, più che un miglioramento algoritmico, a rendere i Transformer rivoluzionari. Senza la parallelizzazione, sarebbe impossibile addestrare modelli su corpora di centinaia di miliardi di parole. I modelli linguistici moderni esistono perché i Transformer hanno reso il loro addestramento \textit{fattibile}.
+Inoltre, a differenza delle architetture ricorrenti, la self-attention può essere naturalmente \textbf{bidirezionale}: nulla impedisce a ogni token di interrogare tutti gli altri, sia quelli che lo precedono sia quelli che lo seguono. Per i task di comprensione, come classificare un testo, estrarre entità o rispondere a domande, questa è esattamente la capacità che serve: la frase da analizzare esiste per intero, e ogni parola dovrebbe poter attingere al contesto completo.
+Ma per sfruttare questa bidirezionalità su larga scala, serve un \textbf{obiettivo di pre-training} che permetta al modello di apprendere rappresentazioni generali del linguaggio prima di essere adattato a task specifici. L'obiettivo classico, \textit{predici il prossimo token}, non è compatibile: se il modello vede l'intera sequenza, conosce già la risposta. Serve un compito diverso, che sfrutti il contesto bidirezionale anziché essere vanificato da esso.
 
 
 
@@ -1128,20 +1059,18 @@ Ma per sfruttare questa bidirezionalità su larga scala, serve un \textbf{obiett
 
 \subsubsection{BERT: codifica bidirezionale}
 \label{subsubsec:bert}
-BERT (Bidirectional Encoder Representations from Transformers), introdotto da Devlin et al.~\parencite{devlin2019bert}, risolve il problema dell'addestramento bidirezionale con un'idea elegante: invece di chiedere al modello di predire il prossimo token, gli chiede di predire 
-i % ****** Aggiunto da MC
-\textit{token mancanti}.
-Il meccanismo, chiamato \textbf{Masked Language Modeling} (MLM), funziona così: durante l'addestramento, una porzione casuale dei token (tipicamente il 15\%) viene mascherata—sostituita con un simbolo speciale \texttt{[MASK]}. Il modello deve predire i token originali basandosi sul contesto circostante.
+BERT (Bidirectional Encoder Representations from Transformers), introdotto in~\parencite{devlin2018bert}, risolve il problema dell'addestramento bidirezionale con un'idea elegante: invece di chiedere al modello di predire il prossimo token, gli chiede di predire i \textit{token mancanti}.
+Il meccanismo, chiamato \textbf{Masked Language Modeling} (MLM), funziona nel modo seguente: durante l'addestramento, una porzione casuale dei token (tipicamente il 15\%) viene mascherata, vale a dire sostituita con un simbolo speciale \texttt{[MASK]}. Il modello deve predire i token originali basandosi sul contesto circostante.
 \begin{notebox}
 \textbf{Masked Language Modeling}\\
-Data una sequenza in cui alcuni token sono stati mascherati, il modello deve predire i token originali utilizzando l'intero contesto—sia le parole precedenti sia quelle successive. La domanda a cui risponde non è ``quale parola \textit{segue}?'' ma ``quale parola \textit{manca}?''.
+Data una sequenza in cui alcuni token sono stati mascherati, il modello deve predire i token originali utilizzando l'intero contesto, sia le parole precedenti sia quelle successive. La domanda a cui risponde non è ``quale parola \textit{segue}?'' ma ``quale parola \textit{manca}?''.
 \end{notebox}
-Consideriamo un esempio. Data la frase:
+Si consideri un esempio. Data la frase:
 \begin{center}
 \textit{``Il \texttt{[MASK]} miagola sul divano.''}
 \end{center}
-il modello deve predire \textit{gatto}. Per farlo, può sfruttare sia il contesto sinistro (\textit{Il}) sia quello destro (\textit{miagola sul divano})—esattamente ciò che la self-attention bidirezionale permette.
-Questo task ha un significato profondo che ci riporta alle fondamenta teoriche discusse all'inizio del capitolo. Ricordiamo i due assi saussuriani del linguaggio:
+il modello deve predire \textit{gatto}. Per farlo, può sfruttare sia il contesto sinistro (\textit{Il}) sia quello destro (\textit{miagola sul divano}), vale a dire esattamente ciò che la self-attention bidirezionale permette.
+Questo task ha un significato profondo che riconduce alle fondamenta teoriche discusse all'inizio del capitolo. Si ricordino i due assi saussuriani del linguaggio:
 \begin{itemize}
     \item L'asse \textbf{sintagmatico} riguarda la combinazione: \textit{``Quale parola segue?''}
     \item L'asse \textbf{paradigmatico} riguarda la selezione: \textit{``Cosa potrei mettere al posto di...?''}
@@ -1176,10 +1105,10 @@ L'obiettivo ``predici il prossimo token'' è una domanda \textit{sintagmatica}: 
     \node[below=0.5cm of t4, font=\scriptsize, gray] {contesto dx};
 
 \end{tikzpicture}
-\caption{Masked Language Modeling: il token mascherato viene predetto integrando informazione da tutto il contesto circostante—sia sinistro che destro.}
+\caption{Masked Language Modeling: il token mascherato viene predetto integrando informazione da tutto il contesto circostante, sia sinistro che destro.}
 \label{fig:mlm}
 \end{figure}
-In questo senso, BERT realizza computazionalmente l'ipotesi distribuzionale: il significato di una parola emerge dai contesti in cui può comparire. Il modello apprende quali parole sono intercambiabili in quali contesti—esattamente la struttura paradigmatica del linguaggio.
+In questo senso, BERT realizza computazionalmente l'ipotesi distribuzionale: il significato di una parola emerge dai contesti in cui può comparire. Il modello apprende quali parole sono intercambiabili in quali contesti, vale a dire esattamente la struttura paradigmatica del linguaggio.
 \paragraph{Pre-training e fine-tuning.}
 BERT introduce anche un nuovo paradigma operativo. Invece di addestrare un modello da zero per ogni task specifico, si procede in due fasi:
 \begin{enumerate}
@@ -1189,16 +1118,10 @@ BERT introduce anche un nuovo paradigma operativo. Invece di addestrare un model
 Questo approccio si è rivelato straordinariamente efficace: le rappresentazioni apprese durante il pre-training si trasferiscono a task diversi, riducendo drasticamente la quantità di dati annotati necessari.
 \paragraph{Il problema dell'opacità.}
 Gli embeddings prodotti da BERT sono \textit{contestuali}: la stessa parola riceve rappresentazioni diverse in frasi diverse, catturando sfumature semantiche e sintattiche che gli embeddings statici non potevano rappresentare. Ma questa potenza ha un costo: le rappresentazioni sono \textbf{opache}.
-Ogni token è rappresentato da un vettore di 768 dimensioni (in BERT-base) o 1024 (in BERT-large). Queste dimensioni non hanno significato interpretabile—non corrispondono a proprietà semantiche esplicite come ``è un animale'', ``esprime un'azione'', ``ha connotazione negativa''. L'informazione c'è, compressa nelle 768 coordinate, ma è distribuita in modo che nessuna singola dimensione corrisponda a un concetto umano riconoscibile.
+Ogni token è rappresentato da un vettore di 768 dimensioni (in BERT-base) o 1024 (in BERT-large). Queste dimensioni non hanno significato interpretabile: non corrispondono a proprietà semantiche esplicite come ``è un animale'', ``esprime un'azione'', ``ha connotazione negativa''. L'informazione è presente, compressa nelle 768 coordinate, ma è distribuita in modo che nessuna singola dimensione corrisponda a un concetto umano riconoscibile.
 \begin{notebox}
 \textbf{Il problema dell'opacità}\\
 Gli embeddings di BERT catturano informazione semantica ricca, ma in forma \textit{distribuita} e \textit{non interpretabile}. Ogni dimensione contribuisce a rappresentare molti concetti diversi; ogni concetto è distribuito su molte dimensioni. Non esiste una mappatura diretta tra coordinate del vettore e proprietà linguistiche comprensibili.
 \end{notebox}
-Questo pone una sfida fondamentale per la comprensione di questi modelli. Sappiamo che funzionano—i risultati empirici sono inequivocabili—ma non sappiamo \textit{cosa} hanno imparato, né \textit{come} rappresentano la conoscenza linguistica. Le 768 dimensioni sono una scatola nera.
-È questa opacità a motivare il lavoro della presente tesi. Nel prossimo capitolo introdurremo gli Sparse Autoencoders, una tecnica per estrarre \textit{feature interpretabili} dagli embeddings densi di BERT—trasformando la scatola nera in una struttura che possiamo analizzare e comprendere.
-
-
-
-
-
-
+Questo pone una sfida fondamentale per la comprensione di questi modelli. È noto che funzionano, i risultati empirici sono inequivocabili, ma non è chiaro \textit{cosa} abbiano imparato, né \textit{come} rappresentino la conoscenza linguistica. Le 768 dimensioni sono una scatola nera.
+È questa opacità a motivare il lavoro della presente tesi. Nel prossimo capitolo saranno introdotti gli Sparse Autoencoders, una tecnica per estrarre \textit{feature interpretabili} dagli embeddings densi di BERT, trasformando la scatola nera in una struttura che è possibile analizzare e comprendere.
