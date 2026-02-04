@@ -1,0 +1,15 @@
+pdflatex main.tex
+biber main
+pdflatex main.tex
+pdflatex main.tex
+
+pdflatex summary_small.tex
+biber summary_small
+pdflatex summary_small.tex
+pdflatex summary_small.tex
+
+
+pdflatex main_summary.tex
+biber main_summary
+pdflatex main_summary.tex
+pdflatex main_summary.tex

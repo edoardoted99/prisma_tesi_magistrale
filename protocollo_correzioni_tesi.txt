@@ -1,0 +1,65 @@
+# Protocollo Convenzioni Tesi
+
+## Stile e voce narrante
+- Utilizzare sempre la **forma impersonale** (es. "saranno discussi", "saranno introdotti", "come sarà possibile osservare", "è stato osservato che", "si consideri", "si supponga", "è possibile costruire", "è noto che")
+- Mai il "noi" maiestatis (no "discuteremo", no "introdurremo", no "come vedremo", no "abbiamo stabilito", no "seguiremo", no "possiamo costruire", no "vogliamo produrre", no "sappiamo che")
+
+## Lessico e formulazioni preferite
+- **"vale a dire"** al posto di "cioè" e "ovvero"
+- **"Il valore aggiunto"** al posto di "L'interesse"
+- **"riconduce"** al posto di "riporta"
+- **"occupare"** al posto di "esplorare" (nel contesto dello spazio delle fasi/stati)
+- **"rispetto alle"** al posto di "per" con "invariante" (es. "invariante rispetto alle trasformazioni")
+- **"ampiezze"** al posto di "magnitudini" (es. "e non le loro ampiezze assolute")
+
+## Punteggiatura
+- Usare **virgole** per gli incisi, mai trattini em-dash (es. "secondo, la divergenza di KL, penalizza" e non "secondo—la divergenza—penalizza")
+- Virgola dopo frasi subordinate che precedono la principale (es. "vincoli da rispettare, il modello è costretto...")
+- Nelle enumerazioni inline all'interno di incisi, usare virgole (es. "come classificare un testo, estrarre entità o rispondere a domande" e non "classificare un testo—estrarre entità—rispondere a domande")
+
+## Riferimenti a equazioni
+- Fare **sempre** riferimento esplicito alle equazioni con `come in Eq.~\ref{...}` perché l'impaginazione può spostarle rispetto al testo
+
+## Riferimenti a figure
+- Usare sempre **Figura** (maiuscolo, per esteso) come convenzione unica in tutta la tesi
+- Creare una macro LaTeX per uniformare (es. `\newcommand{\fig}{Figura}`)
+- Ogni caption deve descrivere solo ciò che è visibile nella propria figura, non anticipare contenuti di figure successive
+
+## Terminologia italiana per la struttura del documento
+- "Section" in inglese si traduce **"paragrafo"** in italiano, non "sezione"
+- Usare quindi "Questo paragrafo introduce..." e non "Questa sezione introduce..."
+- "La sezione precedente" → **"Il paragrafo precedente"**
+- "Nelle sezioni successive" → **"Nei paragrafi successivi"**
+- Il comando `\ref` deve essere preceduto da "Paragrafo" (es. "nel Paragrafo~\ref{...}") e non da "Sezione"
+
+## Introduzione di termini nuovi
+- La **prima volta** che si usa un termine nuovo o potenzialmente non noto, introdurlo esplicitamente tramite footnote o parentesi
+- Esempi applicati:
+  - "loss" → footnote che spiega l'equivalenza con "funzione di perdita"
+  - "disentangled" → footnote che spiega il significato e la traduzione "districata"
+  - "MNIST" → footnote con descrizione del dataset e riferimento bibliografico
+  - "tf-idf" → footnote con spiegazione del meccanismo di pesatura
+- Aggiungere **sempre** un riferimento bibliografico quando si introduce un dataset o un concetto noto
+
+## Citazioni bibliografiche
+- Usare sempre la forma **`in~\parencite{}`** senza riportare esplicitamente il nome degli autori nel testo (es. "introdotto in~\parencite{vaswani2017attention}" e non "introdotto da Vaswani et al.~\parencite{vaswani2017attention}")
+- Uniformarsi a questa convenzione in tutto il documento
+- Quando si menziona un **modello o architettura nota** (BERT, Transformer, Word2Vec, RNN, LSTM...) per la prima volta in un paragrafo, inserire sempre `\parencite{}` alla prima occorrenza
+
+## Articoli davanti ad acronimi
+- Usare l'articolo in base alla **pronuncia** dell'acronimo, non alla sua espansione
+- "LSTM" si pronuncia /el-esse-ti-emme/, quindi: **l'LSTM**, **un'LSTM** (non "la LSTM", "una LSTM")
+- "RNN" si pronuncia /erre-enne-enne/, quindi: **l'RNN**, **un'RNN**
+- "BERT" si pronuncia come parola, quindi: **BERT** (senza articolo, oppure "il modello BERT")
+
+## Struttura dei capitoli
+- All'inizio di ogni capitolo (dopo `\section{}`), aggiungere un **breve testo introduttivo** che descriva la struttura del capitolo, prima dell'eventuale epigrafe o del contenuto vero e proprio
+- Il testo introduttivo deve indicare le parti principali del capitolo e il loro contenuto, in modo analogo a quanto si fa nella "struttura del documento" ma focalizzato sul singolo capitolo
+
+## Chiarezza espositiva
+- Evitare referenti ambigui: specificare sempre di cosa si parla (es. "sugli autoencoder" invece di "su questa architettura")
+- Eliminare parole superflue che non aggiungono informazione:
+  - "in generale" → eliminare
+  - "conseguenze pratiche immediate" → "conseguenze immediate"
+  - "In termini pratici, un autoencoder" → "Un autoencoder"
+- Ripetere il soggetto quando la frase rischia di essere ambigua (es. "il modello è costretto" dopo una subordinata)
