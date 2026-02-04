@@ -751,13 +751,16 @@ Il problema della sequenzialità diventerà critico quando vorremo addestrare mo
 \subsubsection{Bidirezionalità}
 \label{subsubsec:bidirectional}
 
-Le LSTM risolvono il problema del vanishing gradient, ma lo stato nascosto $h_t$ integra esclusivamente informazione dal passato. Consideriamo la frase ``La pesca in questo lago è vietata''. Quando la rete processa il token \textit{pesca}, non ha ancora visto le parole \textit{lago} e \textit{vietata}, che sono cruciali per disambiguare il significato. L'embedding di \textit{pesca} viene calcolato avendo accesso solo a \textit{La}—informazione insufficiente.
+Le LSTM risolvono il problema del vanishing gradient, ma lo stato nascosto $h_t$ integra esclusivamente informazioni dal passato. Consideriamo la frase ``La pesca in questo lago è vietata''. Quando la rete processa il token \textit{pesca}, non ha ancora visto le parole \textit{lago} e \textit{vietata}, che sono cruciali per disambiguare il significato. L'embedding di \textit{pesca} viene calcolato avendo accesso solo a 
+% ****** controlla la riga qua sotto, c'e' qualcosa che non va
+\textit{La}—informazione insufficiente.
 La soluzione è semplice: processare la sequenza in entrambe le direzioni.
 \begin{notebox}
 \textbf{Bidirezionalità}\\
 Un'architettura \textit{bidirezionale} processa la sequenza due volte: una volta da sinistra a destra, una volta da destra a sinistra. L'embedding finale di ogni token combina le informazioni provenienti da entrambe le direzioni, integrando così il contesto completo.
 \end{notebox}
 Una Bi-LSTM consiste di due LSTM indipendenti che operano in parallelo:
+% ****** Qua sotto, cambierei La LSTM in L'LSTM, in entrambi i punti
 \begin{itemize}
     \item La LSTM \textbf{forward} legge la sequenza da $x_1$ a $x_n$, producendo stati $\overrightarrow{h}_1, \dots, \overrightarrow{h}_n$. Ogni $\overrightarrow{h}_t$ cattura il contesto passato.
     \item La LSTM \textbf{backward} legge la sequenza da $x_n$ a $x_1$, producendo stati $\overleftarrow{h}_n, \dots, \overleftarrow{h}_1$. Ogni $\overleftarrow{h}_t$ cattura il contesto futuro.
@@ -840,9 +843,14 @@ h_t^{\text{bi}} = [\overrightarrow{h}_t \oplus \overleftarrow{h}_t]
 \caption{Architettura Bi-LSTM. La sequenza viene processata in entrambe le direzioni. L'embedding finale di ogni token è la concatenazione degli stati forward e backward, integrando così il contesto completo.}
 \label{fig:bilstm}
 \end{figure}
+% ****** Da adesso in avanti non te lo indico più esplicitamente, tuttavia cambia i — degli incisi in virgole. 
 Tornando all'esempio, l'embedding bidirezionale di \textit{pesca} ora integra sia l'informazione da \textit{La} (attraverso $\overrightarrow{h}_2$) sia quella da \textit{in questo lago è vietata} (attraverso $\overleftarrow{h}_2$). Il modello ha finalmente accesso al contesto completo necessario per disambiguare il significato.
 Le Bi-LSTM hanno rappresentato per anni lo stato dell'arte per task di comprensione del linguaggio: classificazione, named entity recognition, part-of-speech tagging. Per questi task, la frase da analizzare esiste per intero prima dell'elaborazione—la bidirezionalità è non solo possibile, ma naturale.
-Tuttavia, esiste una classe di problemi per cui le Bi-LSTM non bastano: i task \textbf{sequence-to-sequence}. Traduzione automatica, riassunto, risposta a domande—in questi casi l'obiettivo non è solo \textit{comprendere} una sequenza, ma \textit{trasformarla} in un'altra sequenza diversa. E qui emerge un problema strutturale nuovo: la sequenza target non esiste ancora quando iniziamo a generarla.
+Tuttavia, esiste una classe di problemi per cui le Bi-LSTM non bastano: i task \textbf{sequence-to-sequence}. Traduzione automatica, riassunto, risposta a domande—in questi casi l'obiettivo non è solo \textit{comprendere} una sequenza, ma \textit{trasformarla} in 
+un'altra sequenza diversa. 
+% ****** MC: qua sopra modificherei in
+% una sequenza diversa.
+E qui emerge un problema strutturale nuovo: la sequenza target non esiste ancora quando iniziamo a generarla.
 
 
 
@@ -851,6 +859,7 @@ Tuttavia, esiste una classe di problemi per cui le Bi-LSTM non bastano: i task \
 
 \subsubsection{Encoder-Decoder: trasformare sequenze}
 \label{subsubsec:encoder_decoder}
+% ****** qua sotto, ti consiglio di passare dalla forma plurale alla prima persona o all'impersonale
 Con le Bi-LSTM possiamo costruire embeddings che integrano il contesto completo di una frase. Per task di \textit{comprensione}—classificare un documento, identificare entità, analizzare il sentiment—questo è sufficiente: la frase esiste per intero, la processiamo, otteniamo rappresentazioni ricche per ogni token.
 Ma cosa succede quando l'obiettivo è \textit{trasformare} una sequenza in un'altra? Consideriamo la traduzione automatica: data la frase inglese ``The cat sleeps on the sofa'', vogliamo produrre ``Il gatto dorme sul divano''. Oppure il riassunto: dato un articolo di 500 parole, generare un abstract di 50. O ancora il question answering generativo: data una domanda e un contesto, produrre una risposta in linguaggio naturale.
 Questi task, noti come \textbf{sequence-to-sequence}, pongono un problema strutturalmente diverso.
@@ -952,7 +961,11 @@ La soluzione richiede un ripensamento radicale: invece di costringere tutta l'in
 \label{subsubsec:attention}
 Il bottleneck dell'architettura Encoder-Decoder deriva da un vincolo strutturale: l'unica informazione sulla sequenza sorgente disponibile al decoder è il singolo vettore $c$. Indipendentemente da quale token stia generando—il primo, il decimo, l'ultimo—il decoder consulta sempre lo stesso riassunto compresso dell'input.
 Ma questa uniformità non riflette la natura del problema. Quando un traduttore genera la parola ``gatto'', ha bisogno di concentrarsi sulla parola ``cat'' nell'input; quando genera ``divano'', deve concentrarsi su ``sofa''. Parti diverse dell'output richiedono parti diverse dell'input. Un singolo vettore statico non può catturare questa corrispondenza dinamica.
-Il meccanismo di attenzione, introdotto da Bahdanau et al.~\parencite{bahdanau2014neural}, risolve il problema con un'idea elegante: invece di un unico context vector $c$, il decoder riceve un context vector \textit{diverso} $c_i$ per ogni token che genera.
+Il meccanismo di attenzione, introdotto 
+da Bahdanau et al.~\parencite{bahdanau2014neural}, 
+% ****** 
+% in \parencite{},
+risolve il problema con un'idea elegante: invece di un unico context vector $c$, il decoder riceve un context vector \textit{diverso} $c_i$ per ogni token che genera.
 \begin{notebox}
 \textbf{Attenzione}\\
 Il meccanismo di \textit{attenzione} permette al decoder di accedere direttamente a tutti gli stati dell'encoder, selezionando dinamicamente le parti più rilevanti ad ogni passo di generazione. Invece di comprimere l'intera sequenza in un punto fisso, l'informazione viene recuperata selettivamente dalla memoria dell'encoder.
@@ -1023,7 +1036,7 @@ L'intuizione è che il decoder ``interroga'' l'encoder ad ogni passo: \textit{da
 Questo meccanismo risolve i problemi del bottleneck:
 \begin{itemize}
     \item \textbf{Nessuna compressione forzata}: l'informazione non deve più attraversare un singolo punto. Il decoder può recuperare dettagli da qualsiasi posizione dell'encoder quando servono.
-    \item \textbf{Accesso diretto}: anche dettagli all'inizio di una frase lunga rimangono accessibili—basta che il decoder impari ad assegnare loro peso alto quando necessario.
+    \item \textbf{Accesso diretto}: anche i dettagli all'inizio di una frase lunga rimangono accessibili—basta che il decoder impari ad assegnare loro peso alto quando necessario.
     \item \textbf{Allineamento implicito}: i pesi $\alpha_{ij}$ implementano un allineamento morbido tra posizioni sorgente e target, senza supervisione esplicita.
 \end{itemize}
 Tuttavia, l'attenzione così formulata opera ancora all'interno di un'architettura ricorrente. L'encoder è una LSTM che processa la sequenza passo dopo passo; il decoder è un'altra LSTM che genera token sequenzialmente. Il limite della \textbf{sequenzialità} rimane: ogni stato dipende dal precedente, e il calcolo non può essere parallelizzato.
@@ -1042,7 +1055,15 @@ La domanda diventa: se l'attenzione permette di collegare direttamente posizioni
 \label{subsubsec:transformer}
 Il meccanismo di attenzione risolve il bottleneck informativo: il decoder può ora accedere selettivamente a qualsiasi posizione dell'encoder, senza che l'informazione debba essere compressa in un singolo vettore. Tuttavia, nelle architetture di Bahdanau, l'attenzione si innesta su una struttura ancora ricorrente. L'encoder è una LSTM che processa i token uno dopo l'altro; il decoder è un'altra LSTM che genera sequenzialmente. L'attenzione migliora il \textit{flusso} di informazione, ma non elimina il vincolo della \textit{sequenzialità}.
 Questo vincolo ha conseguenze pratiche importanti. Una LSTM che processa una sequenza di 100 token deve eseguire 100 passi di calcolo, ciascuno dipendente dal precedente. Anche disponendo di hardware capace di migliaia di operazioni parallele—come le moderne GPU—la rete deve procedere un passo alla volta. Il tempo di addestramento cresce linearmente con la lunghezza delle sequenze, rendendo proibitivo l'addestramento su corpora di miliardi di parole.
-I Transformer, introdotti da Vaswani et al.~\parencite{vaswani2017attention}, partono da un'osservazione semplice: se l'attenzione può già collegare direttamente qualsiasi coppia di posizioni, a cosa serve la ricorrenza? La risposta è: a nulla. L'intera architettura può essere costruita usando \textit{esclusivamente} meccanismi di attenzione, eliminando completamente la ricorrenza.
+I Transformer, introdotti 
+% ****** MC. Qua sotto riformula
+% in \parencite{}
+% Da adesso in avanti non te lo segno più. Tu cerca tutte le occorrenze di \parencite, controlla e nel caso sistema e 
+da Vaswani et al.~\parencite{vaswani2017attention}, 
+partono da 
+% ****** MC. Sostituirei la riga qua sopra con 
+% si basano su
+un'osservazione semplice: se l'attenzione può già collegare direttamente qualsiasi coppia di posizioni, a cosa serve la ricorrenza? La risposta è: a nulla. L'intera architettura può essere costruita usando \textit{esclusivamente} meccanismi di attenzione, eliminando completamente la ricorrenza.
 L'innovazione chiave è la \textbf{self-attention}. Nell'attenzione encoder-decoder di Bahdanau, il decoder interroga l'encoder: sono due sequenze diverse—l'input sorgente e l'output in costruzione. Il decoder chiede: \textit{quale parte dell'input mi serve per generare il prossimo token dell'output?}
 \begin{notebox}
 \textbf{Self-attention}\\
@@ -1089,7 +1110,10 @@ Il punto cruciale è che questo calcolo può avvenire \textit{simultaneamente} p
 Nella ricorrenza, ogni stato $h_t$ dipende dal precedente $h_{t-1}$: il calcolo è intrinsecamente sequenziale. Nella self-attention, il punteggio tra le posizioni $i$ e $j$ non dipende da quello tra $i$ e $k$—tutti i pesi possono essere calcolati in parallelo. Questo permette di sfruttare pienamente l'hardware moderno: le GPU, progettate per eseguire migliaia di operazioni simultanee, possono processare intere sequenze in un singolo passo.
 \end{notebox}
 È questo cambio di paradigma computazionale—più che un miglioramento algoritmico—a rendere i Transformer rivoluzionari. Senza la parallelizzazione, sarebbe impossibile addestrare modelli su corpora di centinaia di miliardi di parole. I modelli linguistici moderni esistono perché i Transformer hanno reso il loro addestramento \textit{fattibile}.
-Inoltre, a differenza delle architetture ricorrenti, la self-attention può essere naturalmente \textbf{bidirezionale}: nulla impedisce a ogni token di interrogare tutti gli altri, sia quelli che lo precedono sia quelli che lo seguono. Per i task di comprensione—classificare un testo, estrarre entità, rispondere a domande—questa è esattamente la capacità che serve: la frase da analizzare esiste per intero, e ogni parola dovrebbe poter attingere al contesto completo.
+Inoltre, a differenza delle architetture ricorrenti, la self-attention può essere naturalmente \textbf{bidirezionale}: nulla impedisce a ogni token di interrogare tutti gli altri, sia quelli che lo precedono sia quelli che lo seguono. Per i task di 
+comprensione—classificare 
+% ****** MC. Controlla la riga qua sopra
+un testo, estrarre entità, rispondere a domande—questa è esattamente la capacità che serve: la frase da analizzare esiste per intero, e ogni parola dovrebbe poter attingere al contesto completo.
 Ma per sfruttare questa bidirezionalità su larga scala, serve un \textbf{obiettivo di pre-training} che permetta al modello di apprendere rappresentazioni generali del linguaggio prima di essere adattato a task specifici. L'obiettivo classico—\textit{predici il prossimo token}—non è compatibile: se il modello vede l'intera sequenza, conosce già la risposta. Serve un compito diverso, che sfrutti il contesto bidirezionale anziché essere vanificato da esso.
 
 
@@ -1104,7 +1128,9 @@ Ma per sfruttare questa bidirezionalità su larga scala, serve un \textbf{obiett
 
 \subsubsection{BERT: codifica bidirezionale}
 \label{subsubsec:bert}
-BERT (Bidirectional Encoder Representations from Transformers), introdotto da Devlin et al.~\parencite{devlin2019bert}, risolve il problema dell'addestramento bidirezionale con un'idea elegante: invece di chiedere al modello di predire il prossimo token, gli chiede di predire \textit{token mancanti}.
+BERT (Bidirectional Encoder Representations from Transformers), introdotto da Devlin et al.~\parencite{devlin2019bert}, risolve il problema dell'addestramento bidirezionale con un'idea elegante: invece di chiedere al modello di predire il prossimo token, gli chiede di predire 
+i % ****** Aggiunto da MC
+\textit{token mancanti}.
 Il meccanismo, chiamato \textbf{Masked Language Modeling} (MLM), funziona così: durante l'addestramento, una porzione casuale dei token (tipicamente il 15\%) viene mascherata—sostituita con un simbolo speciale \texttt{[MASK]}. Il modello deve predire i token originali basandosi sul contesto circostante.
 \begin{notebox}
 \textbf{Masked Language Modeling}\\
