@@ -17,10 +17,26 @@ In questo capitolo saranno presentati i risultati sperimentali ottenuti con PRIS
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{Setup sperimentale}
 \label{subsec:setup}
-Prima di presentare i risultati ottenuti con PRISMA, è necessario descrivere l'infrastruttura hardware e software su cui sono stati condotti gli esperimenti. La scelta della piattaforma non è stata casuale: l'addestramento di Sparse Autoencoder e l'esecuzione di Large Language Models per l'interpretazione automatica delle feature richiedono risorse computazionali significative, in particolare per quanto riguarda la memoria disponibile. Inoltre, la natura sensibile dei dati trattati, vale a dire cartelle cliniche pediatriche fornite da Pedianet\footnote{Pedianet (\url{https://pedianet.it}) è una rete di ricerca che raccoglie dati clinici da pediatri di libera scelta italiani, costituendo uno dei più ampi database di medicina generale pediatrica in Europa.}, ha imposto vincoli stringenti sulla localizzazione dell'elaborazione. PRISMA è stato infatti utilizzato anche per finalità di analisi su tali dati clinici; i relativi risultati non sono tuttavia riportati nella presente tesi, in quanto protetti da accordo di riservatezza (NDA). L'esigenza di un'infrastruttura di inferenza interamente locale, qui dettata dalla normativa sulla protezione dei dati sanitari, è peraltro comune a numerose realtà aziendali e istituzionali che trattano dati sensibili.
+Prima di presentare i risultati ottenuti con PRISMA, è necessario descrivere l'infrastruttura hardware e software su cui sono stati condotti gli esperimenti. La scelta della piattaforma non è stata casuale: l'addestramento di Sparse Autoencoder e l'esecuzione di Large Language Models per l'interpretazione automatica delle feature richiedono risorse computazionali significative, in particolare per quanto riguarda la memoria disponibile. 
+Inoltre, la natura sensibile dei dati trattati, vale a dire cartelle cliniche pediatriche fornite da 
+% ****** MC: Sostituirei la frase qua sopra con ...
+% Inoltre, i testi trattati, in particolare le cartelle cliniche pediatriche fornite da
+Pedianet\footnote{Pedianet (\url{https://pedianet.it}) è una rete di ricerca che raccoglie dati clinici da pediatri di libera scelta italiani, 
+costituendo uno dei più ampi database di medicina generale pediatrica in Europa.
+% ****** MC: modificherei la riga qua sopra in
+% gestisce uno dei più ampi database di medicina generale pediatrica in Europa
+}, 
+ha imposto 
+% ****** MC: sostituirei la riga qua sopra con
+% per quanto anonimizzate o prive di dati sensibili, tuttavia sono soggette a 
+vincoli stringenti sulla localizzazione dell'elaborazione. PRISMA è stato infatti utilizzato anche per finalità di analisi su tali dati clinici; i relativi risultati non sono tuttavia riportati nella presente tesi, in quanto protetti da accordo di riservatezza (NDA). L'esigenza di un'infrastruttura di inferenza interamente locale, qui dettata dalla normativa sulla protezione dei dati sanitari, è peraltro comune a numerose realtà aziendali e istituzionali che trattano dati sensibili.
 \subsubsection{Infrastruttura hardware}
 \label{subsubsec:hardware}
-Gli esperimenti sono stati condotti su un \textbf{Mac Studio} equipaggiato con chip \textbf{Apple M3 Ultra} e \textbf{512 GB} di memoria unificata. La Tabella~\ref{tab:hardware_specs} riassume le specifiche tecniche della macchina.
+Gli esperimenti sono stati condotti su un \textbf{Mac Studio} equipaggiato con chip \textbf{Apple M3 Ultra}
+e 
+% ****** MC: sostituirei con
+%, dotato di Neural Engine e GPU per velocizzare algoritmi di Intelligenza Artificiale e calcolo matematico,
+\textbf{512 GB} di memoria unificata. La Tabella~\ref{tab:hardware_specs} riassume le specifiche tecniche della macchina.
 
 \begin{table}[htbp]
     \centering
@@ -127,11 +143,19 @@ A differenza delle architetture tradizionali, dove CPU e GPU dispongono di memor
 \paragraph{Il collo di bottiglia nelle architetture tradizionali.}
 Per comprendere il vantaggio della UMA, è utile considerare come funzionano le architetture convenzionali. In un sistema con CPU e GPU discrete, i due processori dispongono di memorie fisicamente separate: la RAM di sistema (accessibile alla CPU) e la VRAM (accessibile alla GPU). Quando si addestra una rete neurale, i dati devono essere copiati dalla RAM alla VRAM prima di ogni operazione su GPU, e i risultati devono essere copiati indietro per l'elaborazione su CPU.
 
-Il canale di comunicazione tra CPU e GPU è il bus \textbf{PCIe} (Peripheral Component Interconnect Express). Anche nelle configurazioni più recenti, il bandwidth di questo canale è ordini di grandezza inferiore a quello della memoria locale:
+Il canale di comunicazione tra CPU e GPU è 
+di solito % ****** aggiunto da MC
+il bus \textbf{PCIe} (Peripheral Component Interconnect Express). Anche nelle configurazioni più recenti, 
+%il
+la % ****** Modificato da MC 
+bandwidth di questo canale 
+%è
+ha % ****** modificato da MC
+ordini di grandezza inferiore a quello della memoria locale:
 
 \begin{table}[htbp]
     \centering
-    \caption{Confronto del memory bandwidth tra architetture. Il bandwidth misura quanti dati possono essere trasferiti al secondo tra memoria e processori, un fattore critico per workload memory-bound come l'inferenza di LLM.}
+    \caption{Confronto della memory bandwidth tra architetture. La bandwidth misura quanti dati possono essere trasferiti al secondo tra memoria e processori, un fattore critico per workload memory-bound come l'inferenza di LLM.}
     \label{tab:bandwidth_comparison}
     \begin{tabular}{@{}lrl@{}}
         \toprule
@@ -148,16 +172,24 @@ Il canale di comunicazione tra CPU e GPU è il bus \textbf{PCIe} (Peripheral Com
     \end{tabular}
 \end{table}
 
-Il problema emerge chiaramente: anche se la VRAM di una GPU NVIDIA ha bandwidth elevatissimo (1--2 TB/s), i dati devono prima \textit{attraversare} il bus PCIe, che è 15--30 volte più lento. Per workload che richiedono frequenti trasferimenti CPU-GPU, come l'addestramento di autoencoder con preprocessing su CPU, questo diventa il collo di bottiglia dominante.
+Il problema emerge chiaramente: anche se la VRAM di una GPU NVIDIA ha una bandwidth elevatissima (1--2 TB/s), i dati devono prima \textit{attraversare} il bus PCIe, che è 15--30 volte più lento. Per workload che richiedono frequenti trasferimenti CPU-GPU, come l'addestramento di autoencoder con preprocessing su CPU, questo diventa il collo di bottiglia dominante.
+
 
 \begin{notebox}
 \textbf{Analogia: il magazzino e la porta}\\[0.5em]
-Il memory bandwidth può essere compreso con un'analogia. Si immagini la memoria come un magazzino e i processori (CPU/GPU) come operai che devono lavorare i materiali:
+La memory bandwidth può essere compresa con un'analogia. Si immagini la memoria come un magazzino e i processori (CPU/GPU) come operai che devono lavorare i materiali:
 \begin{itemize}
     \item La \textbf{capacità della memoria} (512 GB) corrisponde alla dimensione del magazzino
     \item Il \textbf{memory bandwidth} (819 GB/s) corrisponde alla larghezza della porta
 \end{itemize}
-Un magazzino enorme con una porta stretta costringe gli operai ad aspettare i materiali. Nelle architetture tradizionali, la ``porta'' tra CPU e GPU (il bus PCIe) è molto più stretta della ``porta'' verso le rispettive memorie locali. Con la UMA, CPU e GPU condividono lo stesso magazzino e la stessa porta, larga 819 GB/s.
+Un magazzino enorme con una porta stretta costringe gli operai ad aspettare i materiali. Nelle architetture tradizionali, la ``porta'' tra CPU e GPU (il bus PCIe) è molto più stretta della ``porta'' verso le rispettive memorie locali. Con la 
+%UMA, 
+Unified Memory Architecture,
+CPU e GPU condividono lo stesso  
+% magazzino e la stessa porta, larga 819 GB/s.
+% ****** Ho sostituito la riga qua sopra con la seguente
+magazzino, non c'è porta di separazione tra i due ambienti, l'unica porta esistente è verso l'esterno (dischi, rete, etc.) ed ha una banda di 819 GB/s. 
+
 \end{notebox}
 Con la Unified Memory Architecture, questo collo di bottiglia scompare. Un tensore allocato in memoria è immediatamente accessibile sia dalla CPU che dalla GPU, senza alcuna copia (\textit{zero-copy}). Il bandwidth di 819 GB/s, 25 volte superiore a PCIe 4.0, è disponibile per \textit{tutti} i componenti simultaneamente.
 \paragraph{Superamento dei limiti della VRAM.}
@@ -166,9 +198,29 @@ Questo è particolarmente rilevante per i Large Language Models. DeepSeek-V3~\pa
 \paragraph{Metal Performance Shaders (MPS).}
 PyTorch supporta l'accelerazione GPU su Apple Silicon attraverso il backend MPS (\texttt{torch.device("mps")}). Questo permette di sfruttare gli 80 core GPU del M3 Ultra per l'addestramento degli Sparse Autoencoder, ottenendo prestazioni significativamente superiori rispetto all'esecuzione su sola CPU.
 \paragraph{Requisiti di privacy: elaborazione locale dei dati clinici.}
-Oltre ai vantaggi prestazionali, la scelta di un'infrastruttura locale è stata dettata da un requisito non negoziabile: la \textbf{privacy dei dati}. Come anticipato, PRISMA è stato impiegato anche per l'analisi di cartelle cliniche pediatriche fornite da Pedianet che, sebbene anonimizzate, contengono informazioni sensibili non trasmissibili a servizi cloud esterni.
-L'utilizzo di API cloud per l'interpretazione delle feature, ad esempio inviando i testi attivanti a GPT-4~\parencite{openai2023gpt4} o Claude~\parencite{anthropic2024claude}, avrebbe comportato il trasferimento di dati clinici su server di terze parti, una pratica incompatibile con le normative sulla protezione dei dati sanitari e con i principi etici della ricerca medica. La disponibilità di 512 GB di memoria unificata ha permesso di eseguire \textit{localmente} modelli linguistici di grande scala, quali DeepSeek~\parencite{deepseekai2024deepseekv3}, Llama~\parencite{touvron2023llama} e Qwen~\parencite{bai2023qwen}, attraverso Ollama, garantendo che nessun dato clinico lasciasse mai la macchina.
-Questa configurazione, vale a dire un'elaborazione interamente on-premise con hardware sufficientemente potente da eseguire LLM di frontiera, rappresenta attualmente una soluzione rara nel panorama del deep learning, dove la maggior parte dei workflow assume l'accesso a risorse cloud. Il Mac Studio con M3 Ultra e 512 GB di memoria è una delle poche piattaforme consumer che rende possibile questo approccio.
+Oltre ai vantaggi prestazionali, la scelta di un'infrastruttura locale è stata dettata da un requisito non negoziabile: 
+% ****** MC, ho aggiunto la riga seguente
+utilizzare un ambiente di elaborazione in grado di garantire
+la \textbf{privacy dei dati}. Come anticipato, PRISMA è stato impiegato anche per l'analisi di cartelle cliniche pediatriche fornite da Pedianet che, sebbene anonimizzate, contengono informazioni 
+%sensibili 
+% ****** Ho modificato la riga sopra nel modo seguente
+sanitarie
+non trasmissibili a servizi cloud esterni.
+%
+%L'
+% ****** MC, ho modificato la riga sopra nel modo seguente
+E' stato escluso a priori 
+l'utilizzo di API cloud per l'interpretazione delle feature, ad esempio inviando i testi attivanti a GPT-4~\parencite{openai2023gpt4} o Claude~\parencite{anthropic2024claude}
+%, avrebbe 
+Ciò avrebbe
+comportato il trasferimento di dati clinici su server di terze parti, una pratica incompatibile con le normative sulla protezione dei dati sanitari e con i principi etici della ricerca medica. La disponibilità di 512 GB di memoria unificata ha permesso di eseguire \textit{localmente} modelli linguistici di grande scala, quali DeepSeek~\parencite{deepseekai2024deepseekv3}, Llama~\parencite{touvron2023llama} e Qwen~\parencite{bai2023qwen}, attraverso 
+% ****** MC, ho aggiunto la riga
+l'infrastruttura
+Ollama, garantendo che nessun dato clinico lasciasse mai la macchina.
+Questa configurazione, vale a dire un'elaborazione interamente on-premise con hardware sufficientemente potente da eseguire LLM di frontiera, rappresenta attualmente una soluzione rara nel panorama del deep learning, dove la maggior parte dei workflow 
+% assume 
+presuppone
+l'accesso a risorse cloud. Il Mac Studio con M3 Ultra e 512 GB di memoria è una delle poche piattaforme consumer che rende possibile questo approccio.
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -354,6 +406,8 @@ A differenza della Feature 5648, che è la radice di una famiglia, la Feature 11
         \bottomrule
     \end{tabular}
 \end{table}
+
+% ****** Mirko sei arrivato qui 
 
 Le correlazioni di co-attivazione (D) disegnano una mappa concettuale notevolmente precisa del modello di Ising: \textit{Quantum Spin}, \textit{Phase Transitions}, \textit{Thermal Physics} e \textit{Magnetic Fields and Materials} sono esattamente i pilastri concettuali su cui si fonda il modello, vale a dire spin discreti su reticolo, transizioni di fase ferromagnetiche, termodinamica statistica, interazioni magnetiche. La correlazione più alta con \textit{Zero Modes} (0.42) è coerente con la relazione parent-child nella topologia delle famiglie.
 
