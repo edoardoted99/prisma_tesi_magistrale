@@ -80,7 +80,7 @@
 \subtitle{Projection of Representations for Interpretability\\via Sparse Monosemantic Autoencoders}
 \author{Edoardo Tedesco}
 \institute{Corso di Laurea Magistrale in Fisica\\Universit\`a degli Studi di Milano}
-\date{Anno Accademico 2024--2025}
+
 
 \begin{document}
 
@@ -129,7 +129,10 @@
             \textcolor{violet}{\textbf{A}}utoencoders}
 
         \vspace{0.6cm}
-        {\color{white} Edoardo Tedesco}
+
+        {\small\color{white!70}\textsc{Disentanglement e scomposizione  in feature monosemantiche delle rappresentazioni latenti nei LLM\\}}
+        \vspace{0.2cm}
+        {\color{gray} Edoardo Tedesco}
 
         \vspace{0.2cm}
         {\small\color{gray!60} Corso di Laurea Magistrale in Fisica\\
@@ -140,7 +143,7 @@
         Relatore esterno: Prof. Mirko Cesarini \quad$\cdot$\quad Relatore interno: Prof. Marco Gherardi}
 
         \vspace{0.2cm}
-        {\footnotesize\color{gray!40} Anno Accademico 2024--2025}
+        
     \end{center}
 \end{frame}
 
@@ -304,7 +307,7 @@
     ]
         \node[draw=gray!50, rectangle, minimum height=3cm, minimum width=0.8cm, fill=gray!80] (input) {Input $\mathbf{x}$};
         \node[draw=gray!50, trapezium, trapezium angle=70, shape border rotate=270, minimum height=1.6cm, fill=blue!40!black, right=of input] (enc) {Encoder};
-        \node[draw=gray!50, rectangle, minimum height=1cm, minimum width=0.8cm, fill=red!40!black, right=of enc] (latent) {$q<n$};
+        \node[draw=gray!50, rectangle, minimum height=1cm, minimum width=0.8cm, fill=red!40!black, right=of enc] (latent) {$n<d$};
         \node[draw=gray!50, trapezium, trapezium angle=70, shape border rotate=90, minimum height=1.6cm, fill=blue!40!black, right=of latent] (dec) {Decoder};
         \node[draw=gray!50, rectangle, minimum height=3cm, minimum width=0.8cm, fill=gray!80, right=of dec] (output) {Output $\hat{\mathbf{x}}$};
 
@@ -315,17 +318,35 @@
     \end{tikzpicture}
 
     \vspace{0.3cm}
+\begin{columns}[T]
+        \begin{column}{0.48\textwidth}
+            \textbf{Encoder:} \quad $f: \mathbb{R}^d \to \mathbb{R}^n$
+        \end{column}
+        \begin{column}{0.48\textwidth}
+            \textbf{Decoder:} \quad $g: \mathbb{R}^n \to \mathbb{R}^d$
+        \end{column}
+    \end{columns}
+
+    \vspace{0.2cm}
     \begin{itemize}
         \item Si forza la macchina a \textbf{ricostruire} i dati di input
-        \item A partire da un numero di variabili \textbf{inferiore} ($q < n$)
+        \item A partire da un numero di variabili \textbf{inferiore} ($n < d$)
         \item La macchina \`e costretta a \textbf{capire} cosa \`e essenziale
     \end{itemize}
 
     \vspace{0.3cm}
     \centering
-    $\mathcal{L} = \|\mathbf{x} - \hat{\mathbf{x}}\|^2$
+    $\mathcal{L} = \|\mathbf{x} - \hat{\mathbf{x}}\|^2 = \|\mathbf{x} - g(f(\mathbf{x}))\|^2$
+
 \end{frame}
 
+% ============================================================
+% SLIDE — Autoencoder: compressione senza semantica
+% ============================================================
+\begin{frame}{Autoencoder}
+    \centering
+    \includegraphics[width=\textwidth, height=0.85\textheight, keepaspectratio]{pictures/ae_no_semantics.png}
+\end{frame}
 % ============================================================
 % SLIDE 5 — Significanti e significati
 % ============================================================
@@ -468,7 +489,7 @@
 
             \vspace{0.3cm}
             \flushleft
-            I modelli analizzano le catene \textbf{sintagmatiche} per ricostruire lo spazio \textbf{paradigmatico}.
+            Aumentare il \textbf{sintagma} milgiora il \textbf{paradigma}. Serve più contesto. 
         \end{column}
     \end{columns}
 \end{frame}
@@ -545,7 +566,7 @@
 % ============================================================
 % SLIDE 9 — Il problema: 768 dimensioni e Superposition
 % ============================================================
-\begin{frame}{Il problema: Superposition}
+\begin{frame}{Il problema: L'ipotesi della Superposition (Anthropic)}
     \begin{columns}[T]
         \begin{column}{0.32\textwidth}
             \centering
@@ -628,10 +649,12 @@
 
     \vspace{0.2cm}
     {\small\textbf{P}rojection of \textbf{R}epresentations for \textbf{I}nterpretability via \textbf{S}parse \textbf{M}onosemantic \textbf{A}utoencoders}
+    
 
     \vspace{0.2cm}
     {\small Scomporre l'embedding denso nelle sue \textbf{feature monosemantiche}: concetti atomici interpretabili.}
 \end{frame}
+
 
 % ============================================================
 % SLIDE 12 — Come funziona PRISMA: lo Sparse Autoencoder
@@ -641,7 +664,7 @@
     \begin{tikzpicture}[scale=0.8, transform shape, every node/.style={text=white}]
         \node[draw=gray!50, rectangle, minimum height=2.5cm, minimum width=0.7cm, fill=gray!60] (input) at (0,0) {$x \in \mathbb{R}^{d}$};
         \node[draw=gray!50, trapezium, trapezium angle=70, shape border rotate=90, minimum height=2cm, fill=green!25!black] (enc) at (3.0,0) {Encoder};
-        \node[draw=gray!50, rectangle, minimum height=5cm, minimum width=0.7cm, fill=red!20!black] (latent) at (6,0) {};
+        \node[draw=gray!50, rectangle, minimum height=5cm, minimum width=1.8cm, fill=red!20!black] (latent) at (6,0) {};
         \node[font=\small] at (6, 0) {$h \in \mathbb{R}^{n}$};
         % Sparse activation dots
         \fill[green!70] (6, 2.0) circle (3pt);
@@ -682,7 +705,6 @@
     \vspace{0.1cm}
     \textbf{Loss:} \quad $\mathcal{L} = \frac{1}{d}\|x - \hat{x}\|_2^2 + \lambda\, \mathcal{L}_{\text{sparse}}(h)$
 \end{frame}
-
 % ============================================================
 % SLIDE 12b — Il vincolo di sparsit\`a e la rappresentazione latente
 % ============================================================
@@ -782,8 +804,7 @@
                 SCR = 100 \cdot \frac{ER_{\text{null}} - ER_{\text{real}}}{ER_{\text{null}}}
             \]
 
-            \vspace{0.2cm}
-            \textit{La semantica si manifesta come una \textbf{riduzione dei gradi di libert\`a}.}
+
         \end{column}
         \begin{column}{0.45\textwidth}
             \centering
@@ -791,6 +812,50 @@
 
             \vspace{0.2cm}
             {\scriptsize ER vs expansion factor\\(dati reali vs ipotesi nulla)}
+        \end{column}
+    \end{columns}
+\end{frame}
+
+% ============================================================
+% SLIDE — Sviluppi futuri
+% ============================================================
+\begin{frame}{Sviluppi futuri: esistono invarianti semantici?}
+    \begin{columns}[T]
+        % --- Colonna sinistra: Einstein ---
+        \begin{column}{0.42\textwidth}
+            \centering
+            \includegraphics[
+                width=\textwidth,
+                height=5.5cm,
+                keepaspectratio
+            ]{pictures/einstein.jpeg}
+            \vspace{0.15cm}
+            {\scriptsize\color{gray!60}\\
+            Relatività: alcune quantità non dipendono dal sistema di riferimento.}
+        \end{column}
+        % --- Colonna destra: contenuto concettuale ---
+        \begin{column}{0.55\textwidth}
+            \small
+            \begin{block}{}
+                \centering
+                \large
+                La velocità della luce \(c\) è \textbf{invariante}
+            \end{block}
+            \vspace{0.2cm}
+            Le coordinate cambiano, il sistema di riferimento cambia, ma alcune quantità restano le stesse.\\
+            \textbf{Domanda analoga:} se cambiamo rappresentazione, esistono quantità semantiche che restano \textbf{invarianti}?
+
+            \vspace{0.2cm}
+            \centering
+            \begin{tikzpicture}[scale=0.7, transform shape, every node/.style={text=white}]
+                \node[draw=red!60, fill=red!30!black, rounded corners, minimum width=2.2cm, minimum height=0.7cm, font=\small] (dense) at (0, 3) {Densa};
+                \node[draw=cyan!60, fill=cyan!30!black, rounded corners, minimum width=2.2cm, minimum height=0.7cm, font=\small] (sparse) at (0, 1.5) {Sparsa};
+                \node[draw=green!60, fill=green!30!black, rounded corners, minimum width=2.2cm, minimum height=0.7cm, font=\small] (human) at (0, 0) {Umana};
+                \node[draw=yellow!60, fill=yellow!30!black, rounded corners, minimum width=2.2cm, minimum height=1cm, font=\small, align=center] (inv) at (3.5, 1.5) {Invarianti\\semantici\\$ds^2_{\text{sem}}$?};
+                \draw[->, thick, red!60] (dense.east) -- (inv.north west);
+                \draw[->, thick, cyan!60] (sparse.east) -- (inv.west);
+                \draw[->, thick, green!60] (human.east) -- (inv.south west);
+            \end{tikzpicture}
         \end{column}
     \end{columns}
 \end{frame}
@@ -823,53 +888,116 @@
     Relatore interno: Prof. Marco Gherardi}
 \end{frame}
 
+
 % ============================================================
-% SLIDE — Sviluppi futuri
+% SLIDE BACKUP — Platonic Representation Hypothesis
 % ============================================================
-\begin{frame}{Sviluppi futuri: verso gli invarianti semantici}
-    \begin{columns}
-        \begin{column}{0.55\textwidth}
-            Tre \textbf{rappresentazioni} dello stesso significato:
+\begin{frame}{Platonic Representation Hypothesis}
+    \begin{columns}[T]
+        \begin{column}{0.45\textwidth}
+            \centering
+            \includegraphics[
+                width=\textwidth,
+                height=6cm,
+                keepaspectratio
+            ]{pictures/platonic_rep_less_space_v2.jpg}
+
+            \vspace{0.2cm}
+            {\tiny Huh, Cheung, Wang, Isola (2024)}
+        \end{column}
+        \begin{column}{0.52\textwidth}
+            Un evento reale $Z$ può essere osservato attraverso modalità diverse:
+
+            \vspace{0.2cm}
             \begin{itemize}
-                \item \textbf{Densa} --- embedding $\mathbf{x} \in \mathbb{R}^d$ (BERT)
-                \item \textbf{Sparsa} --- attivazioni SAE $\mathbf{h} \in \mathbb{R}^n$
-                \item \textbf{Umana} --- struttura concettuale cognitiva
+                \item \textbf{Immagine} $X$ $\xrightarrow{f_{\text{img}}}$ embedding visivo
+                \item \textbf{Testo} $Y$ $\xrightarrow{f_{\text{text}}}$ embedding linguistico
             \end{itemize}
 
             \vspace{0.3cm}
-            Come in fisica: nessuna ``formulazione'' \`e privilegiata.
-
-            \vspace{0.2cm}
-            Newton, Lagrange, Hamilton $\to$ \textbf{stessa fisica}.
+            \textbf{Ipotesi:} al crescere della scala, le rappresentazioni apprese da modelli diversi \textbf{convergono} verso uno stesso modello statistico della realtà.
 
             \vspace{0.3cm}
-            La domanda corretta non \`e ``quale \`e vera?'' ma:
-
-            \vspace{0.2cm}
-            \textit{Esistono \textbf{invarianti semantici} che si preservano attraverso tutte le rappresentazioni?}
+            Come la \textit{realtà ideale} di Platone: esiste una rappresentazione sottostante, indipendente dalla modalità.
 
             \vspace{0.3cm}
-            $\to$ \textbf{Platonic Representation Hypothesis} (ICML 2024):\\
-            {\small modelli diversi convergono verso lo stesso modello statistico della realt\`a.}
+
+
+            \vspace{0.2cm}
+            {\small\color{gray!60} Modelli più grandi misurano le distanze tra dati in modo sempre più simile, indipendentemente dalla modalità.}
         \end{column}
-        \begin{column}{0.4\textwidth}
+    \end{columns}
+\end{frame}
+
+% ============================================================
+% SLIDE BACKUP — Il Mito della Caverna
+% ============================================================
+\begin{frame}{Il Mito della Caverna di Platone}
+    \begin{columns}[T]
+        \begin{column}{0.48\textwidth}
             \centering
-            \begin{tikzpicture}[scale=0.7, transform shape, every node/.style={text=white}]
-                % Tre proiezioni
-                \node[draw=red!60, fill=red!30!black, rounded corners, minimum width=2.2cm, minimum height=0.7cm, font=\small] (dense) at (0, 3) {Densa};
-                \node[draw=cyan!60, fill=cyan!30!black, rounded corners, minimum width=2.2cm, minimum height=0.7cm, font=\small] (sparse) at (0, 1.5) {Sparsa};
-                \node[draw=green!60, fill=green!30!black, rounded corners, minimum width=2.2cm, minimum height=0.7cm, font=\small] (human) at (0, 0) {Umana};
+            \includegraphics[
+                width=\textwidth,
+                height=6.5cm,
+                keepaspectratio
+            ]{pictures/mito_caverna.jpeg}
+        \end{column}
+        \begin{column}{0.48\textwidth}
+            I prigionieri vedono solo \textbf{ombre} proiettate sulla parete della caverna.
+            \vspace{0.3cm}
+            \begin{block}{}
+                \centering
+                Le ombre sono diverse,\\ma l'oggetto è \textbf{lo stesso}.
+            \end{block}
 
-                % Invariante al centro destra
-                \node[draw=yellow!60, fill=yellow!30!black, rounded corners, minimum width=2.2cm, minimum height=1cm, font=\small, align=center] (inv) at (3.5, 1.5) {Invarianti\\semantici\\$ds^2_{\text{sem}}$?};
+            \vspace{0.3cm}
+            L'ipotesi platonica suggerisce che i modelli di AI, al crescere della scala, stiano \textbf{uscendo dalla caverna}: convergono verso la stessa rappresentazione della realtà.
 
-                \draw[->, thick, red!60] (dense.east) -- (inv.north west);
-                \draw[->, thick, cyan!60] (sparse.east) -- (inv.west);
-                \draw[->, thick, green!60] (human.east) -- (inv.south west);
+            \vspace{0.3cm}
+            \centering
+            \begin{tikzpicture}[scale=0.6, transform shape, every node/.style={text=white}]
+                \node[draw=orange!60, fill=orange!25!black, rounded corners, font=\small] (real) at (0, 0) {Realtà $Z$};
+                \node[draw=red!50, fill=red!20!black, rounded corners, font=\scriptsize] (img) at (-2.5, -1.5) {Ombra: immagine};
+                \node[draw=cyan!50, fill=cyan!20!black, rounded corners, font=\scriptsize] (txt) at (2.5, -1.5) {Ombra: testo};
+                \draw[->, thick, red!50] (real) -- (img);
+                \draw[->, thick, cyan!50] (real) -- (txt);
             \end{tikzpicture}
+        \end{column}
+    \end{columns}
+\end{frame}
 
-            \vspace{0.4cm}
-            {\small\color{gray!60} Come $ds^2$ in relativit\`a:\\ le coordinate cambiano,\\ le distanze si preservano.}
+
+
+% ============================================================
+% SLIDE BACKUP — Hubble Deep Field e PRISMA
+% ============================================================
+\begin{frame}{Il Deep Field di Hubble (1996)}
+    \begin{columns}[T]
+        \begin{column}{0.45\textwidth}
+            \centering
+            \includegraphics[
+                width=\textwidth,
+                height=6.5cm,
+                keepaspectratio
+            ]{pictures/hubble.jpg}
+
+            \vspace{0.15cm}
+            {\tiny Hubble Deep Field, NASA/STScI, 1996}
+        \end{column}
+        \begin{column}{0.52\textwidth}
+            Nel 1995, Hubble puntò verso una zona di cielo apparentemente \textbf{vuota} per 10 giorni consecutivi nelle notti tra il 18 e il 28 dicembre.
+
+            \vspace{0.3cm}
+            
+            
+            Il risultato: \textbf{oltre 3000 galassie} nascoste in un'area grande quanto un granello di sabbia a braccia tese.
+
+
+\vspace{0.3cm}
+            Potremmo trovare una struttura nascosta nel profondo dell'\textbf{universo semantico}.
+
+
+
         \end{column}
     \end{columns}
 \end{frame}
@@ -877,7 +1005,7 @@
 % ============================================================
 % SLIDE BACKUP — Feature Families: le matrici
 % ============================================================
-\begin{frame}{Backup: Feature Families --- le matrici}
+\begin{frame}{Feature Families --- le matrici}
     \textbf{Matrice delle attivazioni} $H \in \mathbb{R}^{N \times n}$\quad (documenti $\times$ feature):
     \[
         H_{ki} = \left[ f_\theta(\mathbf{x}_k) \right]_i
@@ -911,7 +1039,7 @@
 % ============================================================
 % SLIDE BACKUP — Similarità geometrica e normalizzazione
 % ============================================================
-\begin{frame}{Backup: Similarit\`a geometrica $S$ e $C^{\text{norm}}$}
+\begin{frame}{Similarit\`a geometrica $S$ e $C^{\text{norm}}$}
     \begin{columns}[T]
         \begin{column}{0.46\textwidth}
             \textbf{Similarit\`a geometrica} $S$:
@@ -949,9 +1077,9 @@
 % ============================================================
 % SLIDE BACKUP — Algoritmo Feature Families
 % ============================================================
-\begin{frame}{Backup: Algoritmo delle Feature Families}
+\begin{frame}{Algoritmo delle Feature Families}
     \begin{enumerate}
-        \item \textbf{Selezione feature}: solo quelle con F1 $\geq 0.8$ e Pearson $\geq 0.8$ nell'interpretazione
+ 
 
         \item \textbf{Costruzione grafo pesato}: soglia $\tau = 0.1$ su $C^{\text{norm}}$
         \[
@@ -967,11 +1095,8 @@
         \]
         {\small Intuizione: concetti generali $\to$ concetti specifici (parent $\to$ child)}
 
-        \item \textbf{Estrazione famiglie}: DFS dalle radici (nodi senza archi entranti). Ogni albero = una famiglia.
+        \item \textbf{Estrazione famiglie}: radici (nodi senza archi entranti). Ogni albero = una famiglia.
 
-        \item \textbf{Iterazione}: si rimuovono i parent e si ricalcola il MST ($n=3$ iterazioni)
-
-        \item \textbf{Deduplicazione}: famiglie con overlap di Jaccard $> 0.6$ vengono fuse
     \end{enumerate}
 
     \vspace{0.2cm}
@@ -982,7 +1107,7 @@
 % ============================================================
 % SLIDE BACKUP — Feature Splitting vs Feature Families
 % ============================================================
-\begin{frame}{Backup: Feature Splitting vs Feature Families}
+\begin{frame}{Feature Splitting vs Feature Families}
     \begin{columns}
         \begin{column}{0.48\textwidth}
             \textbf{Feature Splitting}\\
