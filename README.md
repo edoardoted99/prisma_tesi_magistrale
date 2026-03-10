@@ -10,6 +10,10 @@ Tesi di Laurea Magistrale in Fisica — Universit&agrave; degli Studi di Milano,
 
 ---
 
+<p align="center">
+  <img src="summary/prism.jpg" width="600">
+</p>
+
 ## Abstract
 
 Le rappresentazioni dense apprese dai modelli linguistici — gli *embedding* — codificano informazione semantica ricchissima ma risultano opache: ogni neurone partecipa alla codifica di molteplici concetti (*polisemanticità*). La *Superposition Hypothesis* spiega questo fenomeno come una strategia di compressione in cui il numero di concetti supera il numero di neuroni disponibili.
@@ -19,6 +23,31 @@ Le rappresentazioni dense apprese dai modelli linguistici — gli *embedding* �
 Lo strumento &egrave; stato applicato a un corpus di ~2.5 milioni di abstract scientifici da arXiv, estraendo migliaia di *feature monosemantiche* organizzate spontaneamente in 590 famiglie gerarchiche. L'etichettatura semantica delle feature &egrave; automatizzata tramite un LLM locale (Gemma 3 27B), senza trasmissione di dati a servizi esterni.
 
 Come contributo originale viene introdotto il **Semantic Compression Ratio** (SCR), una metrica basata sull'*Effective Rank* che misura la riduzione della dimensionalit&agrave; effettiva del codice sparso rispetto a un'ipotesi nulla: la compressione raggiunge il 59.9% per expansion factor 64, dimostrando che la semantica si manifesta come riduzione dei gradi di libert&agrave; nello spazio dei concetti estratti.
+
+## Il metodo
+
+Lo Sparse Autoencoder proietta gli embedding densi in uno spazio latente *overcomplete* (n > d), imponendo un vincolo di sparsit&agrave; Top-K che forza solo poche feature ad attivarsi per ogni input. La linearit&agrave; del decoder garantisce che ogni feature corrisponda a una direzione interpretabile nello spazio degli embedding. L'etichettatura semantica &egrave; automatizzata tramite un LLM che analizza i testi che massimizzano l'attivazione di ciascuna feature.
+
+<p align="center">
+  <img src="summary/architecture.png" width="700"><br>
+  <em>Pipeline di training e feature labelling del SAE</em>
+</p>
+
+## Risultati principali
+
+L'analisi dell'*Effective Rank* rivela che lo spazio latente ha dimensionalit&agrave; effettiva sistematicamente inferiore rispetto all'ipotesi nulla (SAE addestrato su input casuali). Il **Semantic Compression Ratio** cresce monotonicamente con l'expansion factor, raggiungendo il **59.9%** per &rho; = 64: la semantica si manifesta come riduzione dei gradi di libert&agrave; nello spazio dei concetti estratti, poich&eacute; i concetti non sono indipendenti ma vincolati da relazioni di co-attivazione che riflettono la struttura del dominio.
+
+<p align="center">
+  <img src="summary/erank_scr_twinaxis_scr_red.png" width="700"><br>
+  <em>Effective Rank vs Expansion Factor (dati reali vs ipotesi nulla) e Semantic Compression Ratio</em>
+</p>
+
+## L'applicazione
+
+<p align="center">
+  <img src="summary/home.png" width="700"><br>
+  <em>Home page di PRISMA</em>
+</p>
 
 ## Struttura del repository
 
@@ -42,9 +71,9 @@ talk/               Presentazione (slides Beamer)
 7. **Conclusioni** — Sintesi e direzioni future
 8. **Appendice**
 
-## Applicazione
+## Codice sorgente
 
-Il codice sorgente di PRISMA &egrave; disponibile nel repository dedicato: [edoardoted99/PRISMA](https://github.com/edoardoted99/PRISMA)
+Il codice sorgente dell'applicazione PRISMA &egrave; disponibile nel repository dedicato: [edoardoted99/PRISMA](https://github.com/edoardoted99/PRISMA)
 
 ## Compilazione
 
