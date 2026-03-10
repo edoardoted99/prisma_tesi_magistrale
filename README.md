@@ -42,6 +42,10 @@ talk/               Presentazione (slides Beamer)
 7. **Conclusioni** — Sintesi e direzioni future
 8. **Appendice**
 
+## Applicazione
+
+Il codice sorgente di PRISMA &egrave; disponibile nel repository dedicato: [edoardoted99/PRISMA](https://github.com/edoardoted99/PRISMA)
+
 ## Compilazione
 
 La tesi &egrave; scritta in LaTeX e richiede una distribuzione TeX con `biber` per la bibliografia:
