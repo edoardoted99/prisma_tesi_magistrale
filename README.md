@@ -1,5 +1,5 @@
-# PRISMA - Tesi di Laurea Magistrale
 
+# P.R.I.S.M.A. 
 **Projection of Representations for Interpretability via Sparse Monosemantic Autoencoders**
 
 Tesi di Laurea Magistrale in Fisica — Universit&agrave; degli Studi di Milano, A.A. 2024–2025
