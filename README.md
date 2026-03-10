@@ -11,7 +11,7 @@ Tesi di Laurea Magistrale in Fisica — Universit&agrave; degli Studi di Milano,
 ---
 
 <p align="center">
-  <img src="summary/prism.jpg" width="600">
+  <img src="summary/prism-1.jpg" width="600">
 </p>
 
 ## Abstract
