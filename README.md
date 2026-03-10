@@ -30,7 +30,7 @@ Lo Sparse Autoencoder proietta gli embedding densi in uno spazio latente *overco
 
 <p align="center">
   <img src="summary/architecture.png" width="700"><br>
-  <em>Pipeline di training e feature labelling del SAE</em>
+  <em>Pipeline di training e feature labelling del SAE (da <a href="https://arxiv.org/abs/2408.00657">O'Neill et al. 2024</a>)</em>
 </p>
 
 ## Risultati principali
