@@ -49,6 +49,15 @@ L'analisi dell'*Effective Rank* rivela che lo spazio latente ha dimensionalit&ag
   <em>Home page di PRISMA</em>
 </p>
 
+## Video presentazione
+
+<p align="center">
+  <a href="https://www.youtube.com/watch?v=9mFta8oLWYo">
+    <img src="https://img.youtube.com/vi/9mFta8oLWYo/maxresdefault.jpg" width="700"><br>
+    <em>Guarda la presentazione su YouTube</em>
+  </a>
+</p>
+
 ## Struttura del repository
 
 ```
