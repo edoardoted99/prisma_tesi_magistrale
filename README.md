@@ -8,7 +8,7 @@ Tesi di Laurea Magistrale in Fisica — Universit&agrave; degli Studi di Milano,
 **Relatore esterno:** Prof. Mirko Cesarini
 **Relatore interno:** Prof. Marco Gherardi
 
----
+
 
 <p align="center">
   <img src="summary/prism-1.jpg" width="600">
