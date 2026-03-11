@@ -14,7 +14,9 @@ Tesi di Laurea Magistrale in Fisica — Universit&agrave; degli Studi di Milano,
   <img src="summary/prism-1.jpg" width="600">
 </p>
 
-[Video presentazione](https://www.youtube.com/watch?v=9mFta8oLWYo)
+---
+[![YouTube](https://img.shields.io/badge/YouTube-Video_spiegazione_tesi-red?logo=youtube)](https://www.youtube.com/watch?v=9mFta8oLWYo)
+---
 
 ## Abstract
 
