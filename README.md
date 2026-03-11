@@ -15,7 +15,12 @@ Tesi di Laurea Magistrale in Fisica — Universit&agrave; degli Studi di Milano,
 </p>
 
 ---
-[![YouTube](https://img.shields.io/badge/YouTube-Video_spiegazione_tesi-red?logo=youtube)](https://www.youtube.com/watch?v=9mFta8oLWYo)
+<p align="center">
+  <a href="https://www.youtube.com/watch?v=9mFta8oLWYo">
+    <img src="https://img.shields.io/badge/YouTube-Video_spiegazione_tesi-red?logo=youtube">
+  </a>
+</p>
+
 ---
 
 ## Abstract
