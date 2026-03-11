@@ -84,17 +84,6 @@ talk/               Presentazione (slides Beamer)
 
 Il codice sorgente dell'applicazione PRISMA &egrave; disponibile nel repository dedicato: [edoardoted99/PRISMA](https://github.com/edoardoted99/PRISMA)
 
-## Compilazione
-
-La tesi &egrave; scritta in LaTeX e richiede una distribuzione TeX con `biber` per la bibliografia:
-
-```bash
-cd main
-pdflatex main.tex
-biber main
-pdflatex main.tex
-pdflatex main.tex
-```
 
 ## Licenza
 
